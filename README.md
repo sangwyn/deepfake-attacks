@@ -21,7 +21,17 @@ python evaluate.py --config configs/AADD_2026_config.yaml
 
 The config's `classifiers` list must have a matching `<name>.pth` in `weights/`
 (e.g. `vit_b_16` needs `weights/vit_b_16.pth`). Remove a classifier from the
-list to skip it.
+list to skip it. Set `seed: <int>` in the config for reproducible runs.
+
+The JSON report includes per-classifier stats (with `clean_real_rate`, the rate
+before attacking) and a `per_image` list (path, SSIM, LPIPS, L∞, clean vs
+attacked prediction) — useful for debugging white-box vs transfer behaviour.
+
+Sanity check (no weights/data needed):
+
+```bash
+python tests/smoke.py
+```
 
 Attacks receive extra keyword arguments from the optional `attack_params` block
 in the config, e.g.:

@@ -24,7 +24,9 @@ YAML configuration (WHAT YOU MUST PROVIDE)
   models_dir     : folder containing <model_name>.pth weight files
   classifiers    : list of model names to evaluate
   device         : "auto" | "cpu" | "cuda"
-  save_json      : path to write a JSON report
+  seed           : optional int — seeds random/numpy/torch for reproducibility
+  save_json      : path to write a JSON report (per-classifier + per-image,
+                   incl. clean-vs-attacked predictions)
 
 YAML configuration (WHAT YOU MUST LEAVE UNCHANGED) -----> the results will be evaluated based on these settings
 -------------------------------
@@ -66,6 +68,7 @@ Usage
 import argparse
 from importlib import import_module
 import json
+import random
 import warnings
 from pathlib import Path
 
@@ -232,7 +235,21 @@ def get_device(choice: str) -> torch.device:
 # MAIN EVALUATION
 # ============================================================================
 
+def predict_np(pack: dict, np_img: np.ndarray, device: torch.device) -> int:
+    """Class prediction of one detector on an H×W×3 uint8 RGB image."""
+    tensor = pack['transform'](Image.fromarray(np_img)).unsqueeze(0).to(device)
+    with torch.no_grad():
+        return int(pack['model'](tensor).argmax(1).item())
+
+
 def evaluate(cfg: dict):
+    seed = cfg.get('seed')
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        print(f"[SEED] {seed}")
+
     device    = get_device(cfg.get('device', 'auto'))
     log_scale = bool(cfg.get('dct_log_scale', True))
     alpha     = float(cfg.get('alpha', 0.5))
@@ -267,6 +284,7 @@ def evaluate(cfg: dict):
             'transform':  transform,
             'clf_weight': float(weight_cfg.get(name, 1.0)),
             'indicators': [],
+            'clean_indicators': [],
             'ssim_vals':  [],
             'lpips_vals': [],
         }
@@ -287,66 +305,75 @@ def evaluate(cfg: dict):
 
     running_sum = 0.0
     total_pairs = 0
+    per_image = []
 
     for o_path in tqdm(orig_paths, desc="Images"):
         rel = o_path.relative_to(original_root)
-
         print(f"[IMAGE] {rel}")
 
-        img_o = pil_to_np_rgb(o_path)
-        img_a = attack_fn(img_o, classifiers, device, **attack_params)
-
-        if save_attacked_dir:
-            save_path = Path(save_attacked_dir) / rel
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-            Image.fromarray(img_a).save(save_path)
-            # Score EXACTLY what gets submitted. Image.save may re-encode
-            # (e.g. JPEG), which changes pixels and can break an epsilon-bounded
-            # perturbation. Reload so SSIM/LPIPS/predictions match the saved file.
-            img_a = pil_to_np_rgb(save_path)
-
-        # SSIM
         try:
-            ssim_val = compute_ssim_rgb(img_o, img_a)
-        except Exception as e:
-            warnings.warn(f"SSIM failed for {rel}: {e}")
-            ssim_val = 0.0
-        print(f"    SSIM : {ssim_val:.4f}")
+            img_o = pil_to_np_rgb(o_path)
+            img_a = attack_fn(img_o, classifiers, device, **attack_params)
 
-        # LPIPS
-        with torch.no_grad():
-            lpips_val = lpips_fn(
-                np_to_lpips_tensor(img_o, device),
-                np_to_lpips_tensor(img_a, device)
-            ).item()
-        print(f"    LPIPS: {lpips_val:.4f}")
+            if save_attacked_dir:
+                save_path = Path(save_attacked_dir) / rel
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                Image.fromarray(img_a).save(save_path)
+                # Score EXACTLY what gets submitted. Image.save may re-encode
+                # (e.g. JPEG), changing pixels and possibly breaking an
+                # epsilon-bounded perturbation. Reload so metrics match the file.
+                img_a = pil_to_np_rgb(save_path)
 
-        sim_weight = alpha * ssim_val + (1.0 - alpha) * (1.0 - lpips_val)
-        pair_contribution = 0.0
-
-        for name, pack in classifiers.items():
-            tensor = pack['transform'](Image.fromarray(img_a))
-            tensor = tensor.unsqueeze(0).to(device)
+            try:
+                ssim_val = compute_ssim_rgb(img_o, img_a)
+            except Exception as e:
+                warnings.warn(f"SSIM failed for {rel}: {e}")
+                ssim_val = 0.0
 
             with torch.no_grad():
-                pred = pack['model'](tensor).argmax(1).item()
+                lpips_val = lpips_fn(
+                    np_to_lpips_tensor(img_o, device),
+                    np_to_lpips_tensor(img_a, device)
+                ).item()
 
-            indicator = int(pred == CLASS_IDX_REAL)
-            pack['indicators'].append(indicator)
-            pack['ssim_vals'].append(ssim_val)
-            pack['lpips_vals'].append(lpips_val)
+            linf = int(np.abs(img_o.astype(np.int16) - img_a.astype(np.int16)).max())
 
-            contribution = pack['clf_weight'] * sim_weight * indicator
-            pair_contribution += contribution
+            print(f"    SSIM : {ssim_val:.4f}    LPIPS: {lpips_val:.4f}")
+            sim_weight = alpha * ssim_val + (1.0 - alpha) * (1.0 - lpips_val)
+            pair_contribution = 0.0
+            rec = {'path': str(rel), 'ssim': ssim_val, 'lpips': lpips_val,
+                   'linf': linf, 'classifiers': {}}
 
-            print(
-                f"    [{name:<22s}]  "
-                f"pred={'Real' if pred == 0 else 'Fake'}  "
-                f"indicator={indicator}  "
-                f"contribution={contribution:.4f}"
-            )
+            for name, pack in classifiers.items():
+                clean_pred = predict_np(pack, img_o, device)
+                pred       = predict_np(pack, img_a, device)
+                indicator = int(pred == CLASS_IDX_REAL)
+                pack['indicators'].append(indicator)
+                pack['clean_indicators'].append(int(clean_pred == CLASS_IDX_REAL))
+                pack['ssim_vals'].append(ssim_val)
+                pack['lpips_vals'].append(lpips_val)
 
-        print(f"    Pair total contribution: {pair_contribution:.4f}")
+                contribution = pack['clf_weight'] * sim_weight * indicator
+                pair_contribution += contribution
+                rec['classifiers'][name] = {
+                    'clean':     'Real' if clean_pred == 0 else 'Fake',
+                    'attacked':  'Real' if pred == 0 else 'Fake',
+                    'indicator': indicator,
+                }
+                print(
+                    f"    [{name:<22s}]  "
+                    f"clean={'Real' if clean_pred == 0 else 'Fake'}  "
+                    f"pred={'Real' if pred == 0 else 'Fake'}  "
+                    f"indicator={indicator}  "
+                    f"contribution={contribution:.4f}"
+                )
+
+            print(f"    L_inf: {linf}/255   Pair total contribution: {pair_contribution:.4f}")
+        except Exception as e:
+            warnings.warn(f"[SKIP] {rel}: {e!r}")
+            continue
+
+        per_image.append(rec)
         running_sum += pair_contribution
         total_pairs += 1
 
@@ -372,12 +399,13 @@ def evaluate(cfg: dict):
     print(f"  Final score             : {final_score:.6f}")
     print()
     for name, pack in classifiers.items():
-        asr       = np.mean(pack['indicators'])   if pack['indicators']   else 0.0
-        m_ssim    = np.mean(pack['ssim_vals'])    if pack['ssim_vals']    else 0.0
-        m_lpips   = np.mean(pack['lpips_vals'])   if pack['lpips_vals']   else 0.0
+        asr       = np.mean(pack['indicators'])       if pack['indicators']       else 0.0
+        clean_asr = np.mean(pack['clean_indicators']) if pack['clean_indicators'] else 0.0
+        m_ssim    = np.mean(pack['ssim_vals'])        if pack['ssim_vals']        else 0.0
+        m_lpips   = np.mean(pack['lpips_vals'])       if pack['lpips_vals']       else 0.0
         print(
             f"  [{name:<22s}]  "
-            f"attack_success={asr:.4f}  "
+            f"clean_real={clean_asr:.4f} -> attack_success={asr:.4f}  "
             f"mean_ssim={m_ssim:.4f}  "
             f"mean_lpips={m_lpips:.4f}  "
             f"clf_weight={pack['clf_weight']:.2f}"
@@ -387,22 +415,25 @@ def evaluate(cfg: dict):
     out_json = cfg.get('save_json')
     if out_json:
         report = {
-            'final_score':       final_score,
-            'aggregate':         cfg.get('aggregate', 'mean'),
-            'alpha':             alpha,
-            'images_evaluated':  total_pairs,
+            'final_score':      final_score,
+            'aggregate':        cfg.get('aggregate', 'mean'),
+            'alpha':            alpha,
+            'images_evaluated': total_pairs,
             'per_classifier': {
                 n: {
-                    'clf_weight':     p['clf_weight'],
-                    'attack_success': float(np.mean(p['indicators'])
-                                           if p['indicators'] else 0.0),
-                    'mean_ssim':      float(np.mean(p['ssim_vals'])
-                                           if p['ssim_vals'] else 0.0),
-                    'mean_lpips':     float(np.mean(p['lpips_vals'])
-                                           if p['lpips_vals'] else 0.0),
+                    'clf_weight':      p['clf_weight'],
+                    'attack_success':  float(np.mean(p['indicators'])
+                                            if p['indicators'] else 0.0),
+                    'clean_real_rate': float(np.mean(p['clean_indicators'])
+                                            if p['clean_indicators'] else 0.0),
+                    'mean_ssim':       float(np.mean(p['ssim_vals'])
+                                            if p['ssim_vals'] else 0.0),
+                    'mean_lpips':      float(np.mean(p['lpips_vals'])
+                                            if p['lpips_vals'] else 0.0),
                 }
                 for n, p in classifiers.items()
             },
+            'per_image': per_image,
         }
         Path(out_json).parent.mkdir(parents=True, exist_ok=True)
         with open(out_json, 'w') as f:

@@ -4,11 +4,13 @@ original_root: ../AADD-2026/AADD_2026_Test
 
 attack: ifgsm
 
+# attack_params: {}      # optional kwargs forwarded to the attack (see its docstring)
+
 save_attacked_dir: null
 
-models_dir: weights/ 
+models_dir: weights/
 
-save_json: experiments/results_identity.json
+save_json: experiments/results.json
 
 
 # You can choose one or both of the classifiers at time of evaluation:
