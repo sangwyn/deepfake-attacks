@@ -1,31 +1,38 @@
+"""
+ifgsm.py — baseline targeted iterative FGSM (BIM), ensemble version.
+
+This is the SANITY-CHECK baseline: a plain L-inf targeted BIM that drives every
+provided detector toward the target class (0 = "Real"). No momentum, no input
+diversity, no EOT. Use it to confirm the pipeline works white-box before moving
+to midi_fgsm.py (MI/DI-FGSM + EOT) for transfer to unseen detectors.
+"""
+
 import torch
 import torch.nn.functional as F
-from torchvision.transforms import functional as TF
+
+from attacks._common import to_tensor, to_numpy, build_preprocess
 
 
 def attack(image, classifiers, device, epsilon=8 / 255,
-           step_size=2 / 255, iterations=10):
-    model = classifiers['vit_b_16']['model']
-    original = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)
-    original = original.float().to(device) / 255
+           step_size=2 / 255, iterations=10, target=0, dct_log_scale=True):
+    """Targeted ensemble BIM over every classifier in `classifiers`."""
+    original = to_tensor(image, device)
     attacked = original.clone()
-    target = torch.tensor([0], device=device)
+    tgt = torch.tensor([target], device=device)
+
+    targets = [
+        (pack["model"], build_preprocess(name, dct_log_scale))
+        for name, pack in classifiers.items()
+    ]
 
     for _ in range(iterations):
-        attacked.requires_grad_()
-        model_input = TF.resize(attacked, [256, 256], antialias=True)
-        model_input = TF.center_crop(model_input, [224, 224])
-        model_input = TF.normalize(
-            model_input,
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        )
-        loss = F.cross_entropy(model(model_input), target)
+        attacked.requires_grad_(True)
+        loss = sum(F.cross_entropy(model(prep(attacked)), tgt)
+                   for model, prep in targets) / len(targets)
         gradient = torch.autograd.grad(loss, attacked)[0]
 
         attacked = attacked - step_size * gradient.sign()
         perturbation = torch.clamp(attacked - original, -epsilon, epsilon)
         attacked = torch.clamp(original + perturbation, 0, 1).detach()
 
-    attacked = attacked[0].permute(1, 2, 0) * 255
-    return attacked.round().to(torch.uint8).cpu().numpy()
+    return to_numpy(attacked)

@@ -7,3 +7,4 @@ tqdm         == 4.67.1
 torch        == 2.3.0
 torchvision  == 0.18.0
 lpips        == 0.1.4
+# kornia               # optional: only for midi_fgsm jpeg_quality EOT

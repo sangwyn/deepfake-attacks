@@ -16,9 +16,11 @@ Supported classifiers
 
 YAML configuration (WHAT YOU MUST PROVIDE)
 -------------------------------
-  original_root  : path to orignal Test 
+  original_root  : path to orignal Test
   attack         : attack module name from the attacks folder
+  attack_params  : optional dict of kwargs forwarded to the attack's attack()
   save_attacked_dir : optional directory for attacked images
+                      (when set, images are scored after save+reload)
   models_dir     : folder containing <model_name>.pth weight files
   classifiers    : list of model names to evaluate
   device         : "auto" | "cpu" | "cuda"
@@ -58,7 +60,7 @@ Usage
         - models_dir: with the .pth weight files
         - save_json: where you want the results JSON to be written
   3. Run the evaluation:
-  python AADD_2026_evaluation.py --config AADD_2026_config.yaml
+  python evaluate.py --config configs/AADD_2026_config.yaml
 """
 
 import argparse
@@ -235,6 +237,7 @@ def evaluate(cfg: dict):
     log_scale = bool(cfg.get('dct_log_scale', True))
     alpha     = float(cfg.get('alpha', 0.5))
     attack_fn = import_module(f"attacks.{cfg['attack']}").attack
+    attack_params = cfg.get('attack_params') or {}
     save_attacked_dir = cfg['save_attacked_dir']
 
     # ── LPIPS perceptual similarity ──────────────────────────────────────
@@ -291,12 +294,16 @@ def evaluate(cfg: dict):
         print(f"[IMAGE] {rel}")
 
         img_o = pil_to_np_rgb(o_path)
-        img_a = attack_fn(img_o, classifiers, device)
+        img_a = attack_fn(img_o, classifiers, device, **attack_params)
 
         if save_attacked_dir:
             save_path = Path(save_attacked_dir) / rel
             save_path.parent.mkdir(parents=True, exist_ok=True)
             Image.fromarray(img_a).save(save_path)
+            # Score EXACTLY what gets submitted. Image.save may re-encode
+            # (e.g. JPEG), which changes pixels and can break an epsilon-bounded
+            # perturbation. Reload so SSIM/LPIPS/predictions match the saved file.
+            img_a = pil_to_np_rgb(save_path)
 
         # SSIM
         try:
