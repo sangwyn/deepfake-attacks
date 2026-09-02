@@ -33,6 +33,8 @@ Allowed `outcome` values are `queued`, `running`, `passed`, `failed`, `blocked`,
 
 The worker may emit `queued`, `failed`, or `blocked` only. The deterministic controller owns `running`, terminal scheduler reconciliation, and cancellation.
 
+The worker writes one file, at the exact path the controller passed on the command line. `status.worker.json` is written by the controller, not by the worker: it is where your document is preserved once the controller replaces the status with its own. A worker that writes there instead leaves the controller with no status at all, and the task fails after the experiment has already run.
+
 `passed` requires all of the following in addition to common fields:
 
 ```json
