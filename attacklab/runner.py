@@ -7,6 +7,7 @@ import os
 import random
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +70,22 @@ def _prediction(model_pack: dict[str, Any], image: Any, device: Any, torch: Any)
         return int(model_pack["model"](tensor).argmax(1).item())
 
 
+def _run_timing(started_at: str, started_monotonic: float) -> dict[str, Any]:
+    """Describe the deterministic runner interval without relying on wall-clock deltas."""
+
+    finished_at = utc_now()
+    return {
+        "schema_version": 1,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "elapsed_seconds": max(0.0, time.monotonic() - started_monotonic),
+        "measurement": (
+            "wall-clock run_experiment preparation and evaluation through summary assembly; "
+            "excludes artifact serialization and final verification"
+        ),
+    }
+
+
 def _require_tracked_inputs(paths: list[Path]) -> None:
     for path in paths:
         try:
@@ -91,6 +108,8 @@ def _require_tracked_inputs(paths: list[Path]) -> None:
 def run_experiment(config_path: Path, run_dir: Path) -> dict[str, Any]:
     """Execute one immutable experiment attempt and verify all produced evidence."""
 
+    started_at = utc_now()
+    started_monotonic = time.monotonic()
     config_path = config_path.resolve()
     run_dir = run_dir.resolve()
     config = load_experiment_config(config_path)
@@ -316,9 +335,10 @@ def run_experiment(config_path: Path, run_dir: Path) -> dict[str, Any]:
         }
         for name in config["models"]
     }
+    timing = _run_timing(started_at, started_monotonic)
     summary = {
         "schema_version": 1,
-        "created_at": utc_now(),
+        "created_at": timing["finished_at"],
         "experiment_id": config["experiment_id"],
         "scope": config["scope"],
         "seed": config["seed"],
@@ -336,6 +356,7 @@ def run_experiment(config_path: Path, run_dir: Path) -> dict[str, Any]:
         if metric_rows
         else None,
         "per_model": per_model,
+        "timing": timing,
     }
     norm_audit = {
         "schema_version": 1,

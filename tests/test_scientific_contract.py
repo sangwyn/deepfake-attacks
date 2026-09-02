@@ -191,5 +191,26 @@ class SchemaTests(unittest.TestCase):
                     "denominator": 6,
                 }
             },
+            "timing": {
+                "schema_version": 1,
+                "started_at": "2026-01-01T00:00:00+00:00",
+                "finished_at": "2026-01-01T00:00:08+00:00",
+                "elapsed_seconds": 8.0,
+                "measurement": (
+                    "wall-clock run_experiment preparation and evaluation through summary "
+                    "assembly; excludes artifact serialization and final verification"
+                ),
+            },
         }
         jsonschema.Draft202012Validator(schema).validate(summary)
+
+    def test_runner_timing_uses_monotonic_elapsed_time(self):
+        from attacklab import runner
+
+        with mock.patch.object(runner, "utc_now", return_value="2026-01-01T00:00:08+00:00"):
+            with mock.patch.object(runner.time, "monotonic", return_value=108.25):
+                timing = runner._run_timing("2026-01-01T00:00:00+00:00", 100.0)
+
+        self.assertEqual(timing["started_at"], "2026-01-01T00:00:00+00:00")
+        self.assertEqual(timing["finished_at"], "2026-01-01T00:00:08+00:00")
+        self.assertEqual(timing["elapsed_seconds"], 8.25)
