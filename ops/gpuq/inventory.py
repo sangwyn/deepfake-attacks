@@ -25,12 +25,20 @@ class GpuInfo:
         requested_memory_mb: int,
         headroom_mb: int,
         max_utilization_percent: int,
+        allow_shared: bool = False,
     ) -> bool:
+        if not self.uuid.startswith("GPU-"):
+            return False
+        if self.free_memory_mb < requested_memory_mb + headroom_mb:
+            return False
+        if allow_shared:
+            # The card may already be running another user's work. Free memory
+            # plus headroom is then the only thing protecting both of us, so it
+            # stays enforced while the exclusivity checks are dropped.
+            return True
         return (
-            self.uuid.startswith("GPU-")
-            and not self.compute_pids
+            not self.compute_pids
             and self.utilization_percent <= max_utilization_percent
-            and self.free_memory_mb >= requested_memory_mb + headroom_mb
         )
 
 

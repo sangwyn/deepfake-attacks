@@ -333,3 +333,70 @@ class SchedulerTests(ProjectFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SharedGpuPolicyTests(unittest.TestCase):
+    """Sharing a card is opt-in, and memory headroom still guards both users."""
+
+    @staticmethod
+    def _gpu(free_memory_mb: int, compute_pids=(), utilization_percent: int = 80):
+        return GpuInfo(
+            index=0,
+            uuid="GPU-shared-0001",
+            total_memory_mb=46068,
+            used_memory_mb=46068 - free_memory_mb,
+            free_memory_mb=free_memory_mb,
+            utilization_percent=utilization_percent,
+            compute_pids=tuple(compute_pids),
+        )
+
+    def test_busy_card_is_refused_by_default(self) -> None:
+        gpu = self._gpu(free_memory_mb=44081, compute_pids=(3429274,))
+        self.assertFalse(
+            gpu.eligible(
+                requested_memory_mb=8192,
+                headroom_mb=4096,
+                max_utilization_percent=5,
+            )
+        )
+
+    def test_busy_card_is_accepted_when_sharing_is_allowed(self) -> None:
+        gpu = self._gpu(free_memory_mb=44081, compute_pids=(3429274,))
+        self.assertTrue(
+            gpu.eligible(
+                requested_memory_mb=8192,
+                headroom_mb=4096,
+                max_utilization_percent=5,
+                allow_shared=True,
+            )
+        )
+
+    def test_sharing_still_enforces_memory_headroom(self) -> None:
+        gpu = self._gpu(free_memory_mb=153, compute_pids=(2823431,))
+        self.assertFalse(
+            gpu.eligible(
+                requested_memory_mb=8192,
+                headroom_mb=4096,
+                max_utilization_percent=5,
+                allow_shared=True,
+            )
+        )
+
+    def test_sharing_still_rejects_a_non_uuid_card(self) -> None:
+        gpu = GpuInfo(
+            index=0,
+            uuid="Unknown Error",
+            total_memory_mb=46068,
+            used_memory_mb=0,
+            free_memory_mb=46068,
+            utilization_percent=0,
+            compute_pids=(),
+        )
+        self.assertFalse(
+            gpu.eligible(
+                requested_memory_mb=8192,
+                headroom_mb=4096,
+                max_utilization_percent=5,
+                allow_shared=True,
+            )
+        )

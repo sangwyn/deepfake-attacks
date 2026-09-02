@@ -33,6 +33,10 @@ class SchedulerPolicy:
     max_idle_utilization_percent: int = 5
     retry_delay_seconds: float = 30.0
     validation_timeout_seconds: float = 600.0
+    # Off by default: waiting for an exclusive card is the conservative policy.
+    # On a cluster every card shares other users' processes permanently, so
+    # without this the scheduler polls forever and never starts a job.
+    allow_shared_gpu: bool = False
 
     def __post_init__(self) -> None:
         if isinstance(self.max_running, bool) or not 1 <= self.max_running <= 8:
@@ -101,7 +105,7 @@ class GpuScheduler:
         for stale in set(self._idle_observations) - observed:
             del self._idle_observations[stale]
         for gpu in inventory:
-            base_idle = (
+            base_idle = self.policy.allow_shared_gpu or (
                 not gpu.compute_pids
                 and gpu.utilization_percent
                 <= self.policy.max_idle_utilization_percent
@@ -118,6 +122,7 @@ class GpuScheduler:
                 requested_memory_mb=requested_memory_mb,
                 headroom_mb=self.policy.headroom_mb,
                 max_utilization_percent=self.policy.max_idle_utilization_percent,
+                allow_shared=self.policy.allow_shared_gpu,
             )
         )
 
@@ -144,6 +149,7 @@ class GpuScheduler:
             requested_memory_mb=requested_memory_mb,
             headroom_mb=self.policy.headroom_mb,
             max_utilization_percent=self.policy.max_idle_utilization_percent,
+            allow_shared=self.policy.allow_shared_gpu,
         ):
             self._idle_observations[gpu_uuid] = 0
             return None
@@ -161,7 +167,7 @@ class GpuScheduler:
             for gpu in inventory
             if gpu.uuid not in self._busy_gpus
             and self._idle_observations.get(gpu.uuid, 0) >= self.policy.idle_samples
-            and not gpu.compute_pids
+            and (self.policy.allow_shared_gpu or not gpu.compute_pids)
         )
         started: list[tuple[str, str]] = []
         capacity = self.policy.max_running - len(self._futures)

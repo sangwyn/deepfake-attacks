@@ -156,6 +156,14 @@ def build_parser() -> argparse.ArgumentParser:
     scheduler.add_argument("--idle-samples", type=int, default=3)
     scheduler.add_argument("--headroom-mb", type=int, default=4096)
     scheduler.add_argument("--max-idle-utilization", type=int, default=5)
+    scheduler.add_argument(
+        "--allow-shared-gpu",
+        action="store_true",
+        help=(
+            "run on a card that already carries another user's process, "
+            "guarded only by free memory and headroom"
+        ),
+    )
     scheduler.add_argument("--retry-delay-seconds", type=float, default=30.0)
     scheduler.add_argument("--validation-timeout-seconds", type=float, default=600.0)
     scheduler.add_argument("--nvidia-smi", default="nvidia-smi")
@@ -237,6 +245,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_idle_utilization_percent=args.max_idle_utilization,
                 retry_delay_seconds=args.retry_delay_seconds,
                 validation_timeout_seconds=args.validation_timeout_seconds,
+                allow_shared_gpu=args.allow_shared_gpu,
             )
             scheduler = GpuScheduler(
                 database,
