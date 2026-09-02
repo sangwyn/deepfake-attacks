@@ -383,9 +383,33 @@ def validate_preflight(manifest: dict[str, Any], dry_run: bool) -> None:
             raise CampaignError(message)
 
 
+def opencode_binary(manifest: dict[str, Any]) -> str:
+    """Resolve the OpenCode binary the campaign manifest declares.
+
+    A non-interactive shell does not read the user's profile, so relying on
+    PATH alone makes the driver work from an attached terminal and fail from
+    ssh or a service. The manifest already records the absolute path.
+    """
+
+    control = manifest.get("control")
+    declared = control.get("opencode_binary") if isinstance(control, dict) else None
+    if isinstance(declared, str) and declared:
+        path = Path(declared)
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise CampaignError(
+                f"control.opencode_binary is not an executable file: {path}"
+            )
+        return str(path)
+    found = shutil.which("opencode")
+    if found is None:
+        raise CampaignError(
+            "opencode is not on PATH and CAMPAIGN.yaml declares no opencode_binary"
+        )
+    return found
+
+
 def validate_launch_environment(manifest: dict[str, Any]) -> None:
-    if shutil.which("opencode") is None:
-        raise CampaignError("opencode is not available on PATH")
+    opencode_binary(manifest)
     validate_preflight(manifest, dry_run=False)
 
 
@@ -760,10 +784,11 @@ def task_command(
     model: str | None,
     variant: str | None,
     auto: bool,
+    binary: str = "opencode",
 ) -> list[str]:
     command_name = "attack" if task["kind"] == "attack" else "campaign-review"
     command = [
-        "opencode",
+        binary,
         "run",
         "--command",
         command_name,
@@ -874,6 +899,7 @@ def run_campaign(
     args: argparse.Namespace,
 ) -> int:
     validate_launch_environment(manifest)
+    binary = opencode_binary(manifest)
     database = open_queue(manifest)
     tasks = state["tasks"]
     tasks_by_id = {task["id"]: task for task in tasks}
@@ -962,6 +988,7 @@ def run_campaign(
             args.model,
             args.variant,
             args.auto,
+            binary,
         )
         atomic_write_json(
             attempt_dir / "command.json",

@@ -255,6 +255,10 @@ class QueuedLifecycleTests(unittest.TestCase):
             mock.patch.object(run_campaign, "ROOT", root),
             mock.patch.object(run_campaign, "POLL_INTERVAL_SECONDS", 0.01),
             mock.patch.object(run_campaign, "validate_preflight"),
+            # CAMPAIGN.yaml names the server's binary, absent on a workstation.
+            mock.patch.object(
+                run_campaign, "opencode_binary", return_value="/usr/bin/opencode"
+            ),
             mock.patch.object(
                 run_campaign.shutil, "which", return_value="/usr/bin/opencode"
             ),
@@ -528,6 +532,42 @@ class ReviewStatusTests(unittest.TestCase):
                 path, self.TASK, 2, self.ALLOWED
             )
             self.assertEqual(status["outcome"], "blocked")
+
+
+
+
+class OpencodeBinaryTests(unittest.TestCase):
+    """A non-interactive shell has no profile, so PATH alone is not enough."""
+
+    def test_declared_binary_is_used_when_executable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            binary = Path(temporary) / "opencode"
+            binary.write_text("#!/bin/sh\n", encoding="utf-8")
+            binary.chmod(0o755)
+            manifest = {"control": {"opencode_binary": str(binary)}}
+            self.assertEqual(run_campaign.opencode_binary(manifest), str(binary))
+
+    def test_declared_binary_that_is_not_executable_is_refused(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            binary = Path(temporary) / "opencode"
+            binary.write_text("", encoding="utf-8")
+            binary.chmod(0o644)
+            manifest = {"control": {"opencode_binary": str(binary)}}
+            with self.assertRaises(run_campaign.CampaignError):
+                run_campaign.opencode_binary(manifest)
+
+    def test_path_lookup_is_the_fallback(self):
+        with mock.patch.object(
+            run_campaign.shutil, "which", return_value="/usr/bin/opencode"
+        ):
+            self.assertEqual(
+                run_campaign.opencode_binary({"control": {}}), "/usr/bin/opencode"
+            )
+
+    def test_absent_everywhere_is_an_error(self):
+        with mock.patch.object(run_campaign.shutil, "which", return_value=None):
+            with self.assertRaises(run_campaign.CampaignError):
+                run_campaign.opencode_binary({})
 
 
 if __name__ == "__main__":
