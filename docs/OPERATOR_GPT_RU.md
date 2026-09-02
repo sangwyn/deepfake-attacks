@@ -226,6 +226,7 @@ cd /home/aiattacks/oleg/aadd-attack-pipeline && python3 -m json.tool tracking/ru
 | Задание долго `queued` | нормально: нужно три подряд наблюдения с достаточной свободной памятью |
 | tmux-сессия умирает мгновенно, лог не создан | `tee` не может писать в несуществующий каталог; `mkdir -p .campaign` перед запуском |
 | Агент пишет `blocked`, `ModuleNotFoundError: numpy` | воркер запустил тест голым `python3`; зависимости в `.venv`. Проверить, что в правах агента разрешён `.venv/bin/python` |
+| `blocked`: development manifest absent | манифесты существуют, но протокол требует **назначенного**. Он назван в `OPENCODE_LUNA.md`: `manifests/celebA/test_fake.jsonl` |
 | `Heavy artifact directory already exists` | повтор с тем же конфигом; нужен новый `run_dir` |
 | SSH рвётся на `kex_exchange_identification` | сработал лимит частых подключений, подождать 15 минут, не долбить |
 
