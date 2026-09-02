@@ -54,6 +54,8 @@ python3 scripts/run_campaign.py --help
 /home/aiattacks/.opencode/bin/opencode run --command campaign --dir "$PWD"
 ```
 
+`docs/OPERATOR_GPT_RU.md` is the full operator instruction: update, launch,
+monitor, read results, recover, and add an attack.
 `docs/AGENT_QUICKSTART_RU.md` is the short operating guide: start the
 scheduler, give an agent a task, check progress, read results. See
 `docs/SCIENTIFIC_PIPELINE.md`, `docs/AGENT_PIPELINE.md`, and
