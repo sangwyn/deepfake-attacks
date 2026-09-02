@@ -218,3 +218,36 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AADD pipeline: local secrets, mutable schedulers, and heavyweight artifacts.
+# Reproducibility metadata belongs under tracking/ and is intentionally tracked.
+.gpuq/
+.campaign/
+.opencode/node_modules/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+runs/
+artifacts/
+generated-images/
+tracking/runs/**/images/
+tracking/runs/**/logs/*.log
+
+# Keep placeholders and compact, reviewable experiment records.
+!tracking/runs/**/.gitkeep
+!tracking/runs/**/*.json
+!tracking/runs/**/*.jsonl
+!tracking/runs/**/*.yaml
+!tracking/runs/**/*.yml
+!tracking/runs/**/*.md
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Detector and LPIPS weights live in the external hash-verified weights_root.
+weights/

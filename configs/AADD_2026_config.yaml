@@ -1,14 +1,14 @@
-# AADD 2026 Adversarial Robustness Evaluation
-# In order to run the AADD_2026_evaluation.py script, you must provide:
-original_root: ../AADD-2026/AADD_2026_Test  
+# Legacy evaluator example for the audited server layout.
+# Scientific campaign runs use configs/experiments and attacklab instead.
+original_root: /home/aiattacks/dataset/celebA/TEST/TEST_FAKE
 
 attack: ifgsm
 
-save_attacked_dir: null
+save_attacked_dir: /home/aiattacks/oleg/aadd-attack-runs/legacy-ifgsm/images
 
-models_dir: weights/ 
+models_dir: /home/aiattacks/oleg/aadd-attack-assets/weights
 
-save_json: experiments/results_identity.json
+save_json: /home/aiattacks/oleg/aadd-attack-runs/legacy-ifgsm/result.json
 
 
 # You can choose one or both of the classifiers at time of evaluation:

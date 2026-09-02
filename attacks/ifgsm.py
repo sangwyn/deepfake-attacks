@@ -1,31 +1,51 @@
+"""Targeted iterative FGSM in RGB pixel space.
+
+The preprocessing and the L-infinity projection come from
+``attacklab.preprocessing`` so that every attack differentiates through the
+same surrogate of the evaluator. The operations and their order are unchanged
+from the original inline implementation.
+"""
+
 import torch
 import torch.nn.functional as F
-from torchvision.transforms import functional as TF
+
+from attacklab.preprocessing import (
+    from_uint8_image,
+    preprocess_for,
+    project_linf,
+    to_uint8_image,
+)
+
+
+ATTACK_CONTRACT = {
+    "version": 1,
+    "supported_source_models": ["vit_b_16"],
+    "description": "Targeted iterative FGSM in RGB pixel space.",
+}
 
 
 def attack(image, classifiers, device, epsilon=8 / 255,
-           step_size=2 / 255, iterations=10):
-    model = classifiers['vit_b_16']['model']
-    original = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)
-    original = original.float().to(device) / 255
+           step_size=2 / 255, iterations=10,
+           source_model="vit_b_16", target_class=0):
+    if source_model != "vit_b_16":
+        raise ValueError("ifgsm supports only source_model='vit_b_16'")
+    if target_class not in {0, 1}:
+        raise ValueError("target_class must be 0 or 1")
+    if epsilon <= 0 or step_size <= 0 or iterations < 1:
+        raise ValueError("epsilon, step_size, and iterations must be positive")
+    model = classifiers[source_model]['model']
+    original = from_uint8_image(image, device)
     attacked = original.clone()
-    target = torch.tensor([0], device=device)
+    target = torch.tensor([target_class], device=device)
 
     for _ in range(iterations):
         attacked.requires_grad_()
-        model_input = TF.resize(attacked, [256, 256], antialias=True)
-        model_input = TF.center_crop(model_input, [224, 224])
-        model_input = TF.normalize(
-            model_input,
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        )
+        model_input = preprocess_for(source_model, attacked)
         loss = F.cross_entropy(model(model_input), target)
         gradient = torch.autograd.grad(loss, attacked)[0]
 
+        # Descend the targeted loss, then re-enter the feasible set.
         attacked = attacked - step_size * gradient.sign()
-        perturbation = torch.clamp(attacked - original, -epsilon, epsilon)
-        attacked = torch.clamp(original + perturbation, 0, 1).detach()
+        attacked = project_linf(attacked, original, epsilon).detach()
 
-    attacked = attacked[0].permute(1, 2, 0) * 255
-    return attacked.round().to(torch.uint8).cpu().numpy()
+    return to_uint8_image(attacked)

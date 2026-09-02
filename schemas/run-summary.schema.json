@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sangwyn/deepfake-attacks/schemas/run-summary.schema.json",
+  "title": "Verified adversarial experiment summary",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "samples_selected",
+    "samples_eligible",
+    "samples_evaluated",
+    "source_model",
+    "target_class",
+    "epsilon",
+    "constraint_violations",
+    "per_model"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "experiment_id": {"type": "string"},
+    "samples_selected": {"type": "integer", "minimum": 0},
+    "samples_eligible": {"type": "integer", "minimum": 0},
+    "samples_evaluated": {"type": "integer", "minimum": 0},
+    "source_model": {"enum": ["vit_b_16", "densenet121_dct"]},
+    "target_class": {"enum": [0, 1]},
+    "epsilon": {"type": "number", "exclusiveMinimum": 0},
+    "constraint_violations": {"type": "integer", "minimum": 0},
+    "mean_ssim": {"type": ["number", "null"]},
+    "mean_lpips": {"type": ["number", "null"]},
+    "per_model": {"type": "object", "minProperties": 1}
+  },
+  "additionalProperties": true
+}
