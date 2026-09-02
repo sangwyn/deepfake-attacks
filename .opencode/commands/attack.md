@@ -15,7 +15,13 @@ Your work ends at queue submission:
 
 1. Check prerequisites and the actual shared interfaces.
 2. Implement only the minimal attack/config/test changes.
-3. Run permitted CPU/unit checks; never run the experiment or verifier directly.
+3. Run permitted CPU/unit checks with the project interpreter, never a bare `python3`: the dependencies live in `.venv` and a system interpreter cannot import numpy or torch. `pytest` is deliberately absent from the frozen environment, so run a test file directly:
+
+   ```bash
+   PYTHONPATH=. .venv/bin/python tests/<test file>.py
+   ```
+
+   Never run the experiment or verifier directly.
 4. Freeze one JSON job spec at `tracking/jobs/<TASK_ID>/job-spec.json` with exactly the gpuq contract: `schema_version: 1`, `task_kind: "attack-experiment"`, `config_path`, unique `run_dir`, positive `requested_memory_mb`, positive `timeout_seconds`, `priority: 0`, and positive `max_attempts`. Do not add a shell command, environment override, GPU index, or secret.
 5. Stage every scientific input you froze, before submitting: `git add attacks/<name>.py configs/experiments/<task>.yaml tests/<test file> tracking/jobs/<TASK_ID>/job-spec.json`. The runner refuses to start on an input that is not in Git, so an unstaged config fails the experiment after the GPU has already been allocated. Stage only the files this task produced. Never commit.
 6. Submit it once with `python3 -m ops.gpuq submit <job-spec.json>`. Do not select a GPU or wait for completion.

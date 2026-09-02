@@ -33,10 +33,18 @@ permission:
     "git add configs/experiments/*": allow
     "git add tests/*": allow
     "git add tracking/jobs/*": allow
-    "python3 scripts/preflight.py *": allow
-    "python3 -m pytest *": allow
-    "python3 -m unittest *": allow
-    "python3 -m compileall *": allow
+    # Project dependencies live in .venv, so a bare python3 cannot import numpy
+    # or torch. Tests must run through the project interpreter.
+    ".venv/bin/python tests/*": allow
+    ".venv/bin/python -m unittest *": allow
+    ".venv/bin/python -m compileall *": allow
+    ".venv/bin/python -m attacklab.cli validate-specs *": allow
+    ".venv/bin/python scripts/preflight.py *": allow
+    ".venv/bin/python -m ops.gpuq submit *": allow
+    ".venv/bin/python -m ops.gpuq list *": allow
+    ".venv/bin/python -m ops.gpuq status *": allow
+    ".venv/bin/python -m ops.gpuq doctor *": allow
+    "PYTHONPATH=. .venv/bin/python tests/*": allow
     "python3 -m ops.gpuq submit *": allow
     "python3 -m ops.gpuq list *": allow
     "python3 -m ops.gpuq status *": allow

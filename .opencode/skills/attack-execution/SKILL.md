@@ -48,7 +48,7 @@ Stage only what this task produced, and never commit: a commit is a human or con
 
 ## 3. Local checks are CPU-only
 
-Run only focused unit/static checks allowed by the agent policy. Do not invoke a command that imports the project in a way that initializes CUDA unless that test is explicitly documented as CPU-only. Never set a GPU environment variable, probe GPU availability, run the experiment, run the verifier, install a package, or download an input.
+Run focused unit checks with `PYTHONPATH=. .venv/bin/python tests/<file>.py`. A bare `python3` cannot import numpy or torch, because the dependencies are installed in the project's `.venv`, and `pytest` is not part of the frozen environment. Run only checks allowed by the agent policy. Do not invoke a command that imports the project in a way that initializes CUDA unless that test is explicitly documented as CPU-only. Never set a GPU environment variable, probe GPU availability, run the experiment, run the verifier, install a package, or download an input.
 
 If tests fail because a pinned dependency is missing, return `blocked`. Do not mutate the environment.
 
