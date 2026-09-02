@@ -50,9 +50,12 @@ opencode run --command attack --dir "$PWD" <атака> <scope>
 opencode run --command attack --dir "$PWD" fgsm smoke
 ```
 
-Что произойдёт: агент `attack-worker` прочитает протокол, напишет
-`attacks/fgsm.py`, добавит тесты, прогонит CPU-проверки, заморозит конфиг и
-job spec, отправит задание в очередь и **выйдет**. Он не ждёт GPU.
+Что произойдёт: агент `attack-worker` прочитает протокол, напишет модуль
+атаки, добавит тесты, прогонит CPU-проверки, заморозит конфиг, застейджит их
+через `git add`, отправит задание в очередь и **выйдет**. Он не ждёт GPU.
+
+`ifgsm` и `fgsm` уже реализованы и закоммичены — на них воркер только
+проверит предпосылки. Остальные пишет с нуля.
 
 Атаки кампании, в порядке возрастания стоимости:
 
@@ -90,7 +93,7 @@ opencode run --command attack --dir "$PWD" --model bailian-payg/qwen3.7-plus fgs
 
 ## 2. Запустить всю кампанию
 
-21 задача: 10 атак × (smoke + development) + финальный отбор.
+14 задач: регрессия `ifgsm-smoke`, затем шесть атак × (smoke + development) минус пары, которых нет, и финальный отбор. Точный список всегда смотреть через `--dry-run`.
 
 ```bash
 tmux new-session -d -s campaign -c /home/aiattacks/oleg/aadd-attack-pipeline \
@@ -99,8 +102,9 @@ tmux new-session -d -s campaign -c /home/aiattacks/oleg/aadd-attack-pipeline \
 
 Контроллер сам поднимает по одному процессу OpenCode на задачу, ждёт её job в
 очереди, сверяет отчёт верификатора и только потом идёт дальше. Задачи связаны
-зависимостями: `pgd` требует пройденного `ifgsm-development`, `di-mi-fgsm`
-требует `mifgsm`, и так далее.
+зависимостями: `pgd` требует пройденного `fgsm-development`, `mi-di-fgsm`
+требует `pgd-development`, `ssa` и `ensemble-mi-eot` требуют
+`mi-di-fgsm-development`, и так далее.
 
 Посмотреть план, ничего не запуская:
 

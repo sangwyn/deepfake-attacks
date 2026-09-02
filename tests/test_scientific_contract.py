@@ -220,12 +220,17 @@ class TestLayoutTests(unittest.TestCase):
     def test_no_test_class_follows_the_main_guard(self):
         root = Path(__file__).resolve().parents[1]
         for path in sorted((root / "tests").glob("test_*.py")):
-            text = path.read_text(encoding="utf-8")
-            marker = 'if __name__ == "__main__":'
-            index = text.find(marker)
-            if index == -1:
+            lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+            # Match the guard as a top-level statement, not the same text
+            # quoted inside a string literal such as this test's own source.
+            positions = [
+                number
+                for number, line in enumerate(lines)
+                if line.startswith('if __name__ ==')
+            ]
+            if not positions:
                 continue
-            trailing = text[index:]
+            trailing = "".join(lines[positions[-1]:])
             self.assertNotIn(
                 "\nclass ",
                 trailing,
@@ -237,6 +242,191 @@ class TestLayoutTests(unittest.TestCase):
                 trailing,
                 f"{path.name} defines a test function after the __main__ guard",
             )
+
+
+class SpecScheduleAgreementTests(unittest.TestCase):
+    """A scheduled attack with no specification, or the reverse, misleads both
+    the worker that must implement it and the reviewer that gates it."""
+
+    @staticmethod
+    def _root() -> Path:
+        return Path(__file__).resolve().parents[1]
+
+    def _scheduled_attacks(self) -> set[str]:
+        import yaml
+
+        manifest = yaml.safe_load(
+            (self._root() / "CAMPAIGN.yaml").read_text(encoding="utf-8")
+        )
+        return {
+            task["attack"]
+            for task in manifest["profiles"]["development"]["tasks"]
+            if task.get("kind", "attack") == "attack"
+        }
+
+    def _specified_attacks(self) -> set[str]:
+        # specs/attacks is the source of truth for what an attack is.
+        return {path.stem for path in (self._root() / "specs" / "attacks").glob("*.yaml")}
+
+    def test_every_scheduled_attack_has_a_specification(self):
+        missing = self._scheduled_attacks() - self._specified_attacks()
+        self.assertEqual(
+            missing,
+            set(),
+            "CAMPAIGN.yaml schedules attacks with no file in specs/attacks",
+        )
+
+    def test_every_specified_attack_is_scheduled(self):
+        extra = self._specified_attacks() - self._scheduled_attacks()
+        self.assertEqual(
+            extra,
+            set(),
+            "specs/attacks describes attacks the campaign never runs; "
+            "a reviewer could apply their gates to nothing",
+        )
+
+
+def _write_complete_run(root: Path, *, timing: dict | None = None,
+                        linf: float | None = None) -> Path:
+    """Build a run directory the verifier should accept, so individual checks
+    can be removed one at a time and shown to fail."""
+
+    import hashlib
+    import json
+
+    import yaml
+
+    run_dir = root / "attempt-0001"
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    config = experiment_config()
+    epsilon = float(config["constraint"]["epsilon"])
+    (run_dir / "resolved_config.yaml").write_text(
+        yaml.safe_dump(config, sort_keys=True), encoding="utf-8"
+    )
+    (run_dir / "resolved_server_config.yaml").write_text("placeholder: true\n", encoding="utf-8")
+    (run_dir / "manifest.snapshot.jsonl").write_text(
+        json.dumps({"sample_id": "sha256:aa", "label": 1}) + "\n", encoding="utf-8"
+    )
+    (run_dir / "selection.jsonl").write_text(
+        json.dumps({"sample_id": "sha256:aa", "eligible": True}) + "\n", encoding="utf-8"
+    )
+
+    output = run_dir / "adversarial.png"
+    output.write_bytes(b"not really a png, only hashed")
+    digest = hashlib.sha256(output.read_bytes()).hexdigest()
+    (run_dir / "per_sample_metrics.jsonl").write_text(
+        json.dumps(
+            {
+                "sample_id": "sha256:aa",
+                "linf": epsilon if linf is None else linf,
+                "ssim": 0.99,
+                "lpips": 0.01,
+                "clean_predictions": {"vit_b_16": 1},
+                "adversarial_predictions": {"vit_b_16": 0},
+                "output": {"path": str(output), "sha256": digest, "format": "png"},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    violations = 0 if (linf is None or linf <= epsilon + 1 / 255 + 1e-12) else 1
+    (run_dir / "norm_audit.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "epsilon": epsilon,
+                "violations": violations,
+                "samples": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = {
+        "schema_version": 1,
+        "experiment_id": config["experiment_id"],
+        "samples_selected": 1,
+        "samples_eligible": 1,
+        "samples_evaluated": 1,
+        "source_model": "vit_b_16",
+        "target_class": 0,
+        "epsilon": epsilon,
+        "constraint_violations": violations,
+        "per_model": {"vit_b_16": {"successes": 1, "denominator": 1}},
+    }
+    if timing is not None:
+        summary["timing"] = timing
+    (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+
+    def sha(name: str) -> str:
+        return hashlib.sha256((run_dir / name).read_bytes()).hexdigest()
+
+    (run_dir / "provenance.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "inputs": {
+                    "config": {"sha256": sha("resolved_config.yaml")},
+                    "manifest": {"sha256": sha("manifest.snapshot.jsonl")},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (run_dir / "artifacts.json").write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    return run_dir
+
+
+VALID_TIMING = {
+    "schema_version": 1,
+    "started_at": "2026-09-03T00:00:00+00:00",
+    "finished_at": "2026-09-03T00:01:00+00:00",
+    "elapsed_seconds": 60.0,
+    "measurement": (
+        "wall-clock run_experiment preparation and evaluation through summary "
+        "assembly; excludes artifact serialization and final verification"
+    ),
+}
+
+
+class VerifierBehaviourTests(unittest.TestCase):
+    """Exercise the branch that actually decides whether a run counts."""
+
+    def test_complete_run_is_accepted(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = _write_complete_run(Path(temporary), timing=VALID_TIMING)
+            report = verify_run(run_dir, write_report=False)
+        self.assertEqual(report["outcome"], "passed", report["errors"])
+
+    def test_run_without_timing_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = _write_complete_run(Path(temporary), timing=None)
+            report = verify_run(run_dir, write_report=False)
+        self.assertEqual(report["outcome"], "failed")
+        self.assertTrue(
+            any("timing" in error for error in report["errors"]), report["errors"]
+        )
+
+    def test_run_with_negative_elapsed_time_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            broken = dict(VALID_TIMING, elapsed_seconds=-1.0)
+            run_dir = _write_complete_run(Path(temporary), timing=broken)
+            report = verify_run(run_dir, write_report=False)
+        self.assertEqual(report["outcome"], "failed")
+
+    def test_budget_violation_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = _write_complete_run(
+                Path(temporary), timing=VALID_TIMING, linf=0.5
+            )
+            report = verify_run(run_dir, write_report=False)
+        self.assertEqual(report["outcome"], "failed")
+        self.assertTrue(
+            any("constraint violation" in e.lower() for e in report["errors"]),
+            report["errors"],
+        )
 
 
 if __name__ == "__main__":

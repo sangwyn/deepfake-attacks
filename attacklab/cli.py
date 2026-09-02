@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from .artifacts import verify_run
+from .attack_spec import report as spec_report
 from .config import PROJECT_ROOT, load_server_config
 from .io import ContractError, atomic_write_json, project_relative_path, utc_now
 from .manifest import build_manifests
@@ -40,6 +41,12 @@ def parser() -> argparse.ArgumentParser:
 
     verify = commands.add_parser("verify", help="validate a completed attempt")
     verify.add_argument("--run-dir", required=True)
+
+    specs = commands.add_parser(
+        "validate-specs", help="check attack specifications against this checkout"
+    )
+    specs.add_argument("--config", required=True)
+    specs.add_argument("--json", action="store_true")
 
     status = commands.add_parser("validate-status", help="validate agent status JSON")
     status.add_argument("--kind", choices=("attack", "review"), required=True)
@@ -93,6 +100,19 @@ def main(argv: list[str] | None = None) -> int:
             report = verify_run(_project_path(args.run_dir), write_report=True)
             print(json.dumps(report, indent=2, sort_keys=True))
             return 0 if report["outcome"] == "passed" else 2
+
+        if args.command == "validate-specs":
+            result = spec_report(_project_path(args.config))
+            if args.json:
+                print(json.dumps(result, indent=2, sort_keys=True))
+            else:
+                print(f"specifications: {', '.join(result['specifications'])}")
+                for line in result["blockers"]:
+                    print(f"[BLOCK] {line}")
+                for line in result["warnings"]:
+                    print(f"[WARN ] {line}")
+                print(f"status: {result['status']}")
+            return 0 if result["status"] == "pass" else 2
 
         if args.command == "validate-status":
             value = load_and_validate_status(_project_path(args.status_file), args.kind)

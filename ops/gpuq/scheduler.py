@@ -266,6 +266,9 @@ class GpuScheduler:
                     job_id, pid, str(log_path)
                 ),
             )
+            self.database.record_duration(
+                job_id, "run_seconds", run_result.duration_seconds
+            )
             if run_result.reason == "cancelled":
                 self.database.mark_cancelled(job_id, "owned runner cancelled")
                 return
@@ -301,6 +304,9 @@ class GpuScheduler:
                 cancel_requested=lambda: self.database.cancel_requested(job_id),
                 shutdown_requested=self._shutdown.is_set,
                 on_start=lambda pid: self.database.set_active_pid(job_id, pid),
+            )
+            self.database.record_duration(
+                job_id, "validate_seconds", validation_result.duration_seconds
             )
             if validation_result.reason == "cancelled":
                 self.database.mark_cancelled(job_id, "owned validator cancelled")

@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sangwyn/deepfake-attacks/schemas/attack-spec.schema.json",
+  "title": "Attack idea specification",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "idea_id",
+    "status",
+    "title",
+    "hypothesis",
+    "baseline",
+    "implementation",
+    "parameters",
+    "evaluation",
+    "required_tests",
+    "retention_gate",
+    "gpu"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "idea_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "status": {
+      "enum": [
+        "approved",
+        "draft",
+        "deferred",
+        "blocked"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hypothesis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "novelty": {
+      "type": "string"
+    },
+    "optional": {
+      "type": "boolean"
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "attack"
+      ],
+      "properties": {
+        "attack": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "implementation": {
+      "type": "object",
+      "required": [
+        "module",
+        "source_model",
+        "targeted"
+      ],
+      "properties": {
+        "module": {
+          "type": "string",
+          "pattern": "^attacks\\.[a-z0-9_]+$"
+        },
+        "source_model": {
+          "enum": [
+            "each-valid-single-source",
+            "leave-one-detector-out-ensemble",
+            "vit_b_16",
+            "densenet121_dct"
+          ]
+        },
+        "targeted": {
+          "type": "boolean"
+        },
+        "fidelity": {
+          "type": "string"
+        },
+        "missing_prerequisite_policy": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "object",
+      "required": [
+        "epsilon",
+        "iterations"
+      ],
+      "properties": {
+        "epsilon": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1
+          }
+        },
+        "iterations": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "const": "published-protocol"
+            }
+          ]
+        },
+        "step_size": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "string",
+              "pattern": "^epsilon / (iterations|[1-9][0-9]*)$"
+            }
+          ]
+        }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "required": [
+        "first_scope",
+        "source_label",
+        "target_class",
+        "manifest",
+        "target_models",
+        "seed"
+      ],
+      "properties": {
+        "first_scope": {
+          "enum": [
+            "smoke",
+            "development",
+            "full"
+          ]
+        },
+        "source_label": {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "target_class": {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "secondary_condition": {
+          "type": "string"
+        },
+        "manifest": {
+          "type": "string",
+          "pattern": "^manifests/"
+        },
+        "sample_limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "source_target_protocol": {
+          "type": "string"
+        },
+        "target_models": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          }
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "required_tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "retention_gate": {
+      "type": "object",
+      "required": [
+        "metric",
+        "minimum_gain_percentage_points"
+      ],
+      "properties": {
+        "metric": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minimum_gain_percentage_points": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maximum_ssim_regression": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maximum_lpips_regression": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "gpu": {
+      "type": "object",
+      "required": [
+        "requested_memory_mb",
+        "timeout_seconds"
+      ],
+      "properties": {
+        "requested_memory_mb": {
+          "type": "integer",
+          "minimum": 1024
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 60
+        }
+      },
+      "additionalProperties": false
+    },
+    "protected_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

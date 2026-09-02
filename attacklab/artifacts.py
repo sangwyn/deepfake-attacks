@@ -150,6 +150,17 @@ def verify_run(run_dir: Path, write_report: bool = True) -> dict[str, Any]:
         if norm_audit.get("epsilon") != config["constraint"]["epsilon"]:
             raise ContractError("norm_audit epsilon differs from resolved config")
 
+        timing = summary.get("timing")
+        if not isinstance(timing, dict) or timing.get("schema_version") != 1:
+            raise ContractError("summary.timing must be a schema-version-1 object")
+        for field in ("started_at", "finished_at", "measurement"):
+            value = timing.get(field)
+            if not isinstance(value, str) or not value:
+                raise ContractError(f"summary.timing.{field} is missing")
+        elapsed = _finite_number(timing.get("elapsed_seconds"), "timing.elapsed_seconds")
+        if elapsed < 0:
+            raise ContractError("timing.elapsed_seconds must not be negative")
+
         inputs = provenance.get("inputs")
         if not isinstance(inputs, dict):
             raise ContractError("provenance.inputs is missing")

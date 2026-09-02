@@ -400,5 +400,55 @@ class SharedGpuPolicyTests(unittest.TestCase):
         )
 
 
+
+
+class DurationPersistenceTests(unittest.TestCase):
+    """Queue time and process time must survive the job, not only the log."""
+
+    def _database(self, root: Path) -> tuple[QueueDatabase, str]:
+        (root / "configs").mkdir(parents=True, exist_ok=True)
+        (root / "configs" / "exp.yaml").write_text("a: 1\n", encoding="utf-8")
+        database = QueueDatabase(root / ".gpuq", root)
+        spec = JobSpec.from_mapping(
+            {
+                "schema_version": 1,
+                "task_kind": "attack-experiment",
+                "config_path": "configs/exp.yaml",
+                "run_dir": "tracking/runs/camp/task",
+                "requested_memory_mb": 1024,
+                "timeout_seconds": 60,
+            },
+            root,
+        )
+        record, _ = database.submit(spec)
+        return database, record["id"]
+
+    def test_durations_are_recorded_and_exported(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            database, job_id = self._database(root)
+            database.record_duration(job_id, "run_seconds", 12.5)
+            database.record_duration(job_id, "validate_seconds", 3.25)
+            record = database.get(job_id)
+            self.assertAlmostEqual(record["run_seconds"], 12.5)
+            self.assertAlmostEqual(record["validate_seconds"], 3.25)
+
+            database.claim(job_id, "GPU-dur-0001", "owner")
+            status = json.loads(
+                (root / "tracking/runs/camp/task/gpuq_status.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertAlmostEqual(status["run_seconds"], 12.5)
+            self.assertAlmostEqual(status["validate_seconds"], 3.25)
+
+    def test_unknown_duration_column_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            database, job_id = self._database(root)
+            with self.assertRaises(QueueStateError):
+                database.record_duration(job_id, "wall_seconds; DROP TABLE jobs", 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -136,6 +136,13 @@ class QueueDatabase:
                 END;
                 """
             )
+            # Added after the first deployments, so migrate in place. SQLite has
+            # no IF NOT EXISTS for ADD COLUMN; an existing column simply raises.
+            for column in ("run_seconds", "validate_seconds"):
+                try:
+                    connection.execute(f"ALTER TABLE jobs ADD COLUMN {column} REAL")
+                except sqlite3.OperationalError:
+                    pass
             metadata = {
                 row["key"]: row["value"]
                 for row in connection.execute("SELECT key, value FROM metadata")
@@ -207,6 +214,8 @@ class QueueDatabase:
             "error": record["error"],
             "created_at": record["created_at"],
             "updated_at": record["updated_at"],
+            "run_seconds": record.get("run_seconds"),
+            "validate_seconds": record.get("validate_seconds"),
         }
         _atomic_json(run_dir / "gpuq_status.json", status)
 
@@ -414,6 +423,17 @@ class QueueDatabase:
             pid=pid,
             log_path=log_path,
         )
+
+    def record_duration(self, job_id: str, column: str, seconds: float) -> None:
+        """Persist how long an owned process ran, so run time outlives the log."""
+
+        if column not in {"run_seconds", "validate_seconds"}:
+            raise QueueStateError(f"Unknown duration column: {column}")
+        with self._transaction() as connection:
+            connection.execute(
+                f"UPDATE jobs SET {column} = ? WHERE id = ?",
+                (float(seconds), job_id),
+            )
 
     def mark_validating(self, job_id: str) -> dict[str, Any]:
         return self._transition(

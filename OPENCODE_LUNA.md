@@ -22,19 +22,29 @@ Invocation: `/attack <name> <smoke|development|full> [status-file] [task-id]`. I
 
 ## Attack tasks
 
-Two detectors are available: `vit_b_16` and `densenet121_dct`. Any method described in the literature as an ensemble method therefore has at most two sources, and leave-one-detector-out leaves exactly one. Report such a run as an ensemble-of-two white-box variant, never as held-out transfer evidence.
+`specs/attacks/<name>.yaml` is authoritative for every attack: its parameters,
+budgets, evaluation protocol, required tests, and retention gate. Read the file
+for the attack you were given and implement exactly that. Do not take
+parameters from prose anywhere else, including this document.
 
-| Name | Prerequisite | Implementation |
-|---|---|---|
-| `ifgsm` | none | Pipeline regression only, not a research result. `epsilon=8/255`, `alpha=2/255`, 10 steps, no random start. Preserve the existing behavior exactly; do not modify this module. |
-| `fgsm` | none | One targeted step, `epsilon=8/255`. Minimal classical baseline. |
-| `pgd` | FGSM | `epsilon=8/255`, `alpha=2/255`, 10 steps, seeded uniform start in `[-epsilon,epsilon]`. Standard strong white-box baseline. |
-| `mi-di-fgsm` | PGD | Momentum and input diversity in one method. `mu=1`; normalize each gradient by its mean absolute value before momentum. Apply differentiable resize `224..256` and random pad to 256 with `p=0.5` before detector preprocessing. Classical transferable baseline. |
-| `ensemble-mi-eot` | MI-DI-FGSM | MI-FGSM over both detectors as the source ensemble, averaging gradients over `K=5` expectation-over-transformation samples of JPEG quality, resize kernel, and mild blur. Robustness-oriented baseline. With two detectors this is not a held-out result. |
-| `ssa` | MI-DI-FGSM | Spectrum simulation, also called S2I-FGSM. Keep the variable in RGB. Average `N=20` gradients from `IDCT(DCT(x+xi)*M)`, `M~U(0.5,1.5)`, `sigma_xi=epsilon`; compare spatial, spectral, and 50/50 normalized fusion. See `modern/2407.20836v6.pdf`. |
-| `mig-cow` | validated multi-source setup | From Algorithm 1 in `aadd-2025/3746027.3761986.pdf`: `epsilon=0.02`, 25 steps, `mu=1`, `beta=0.75`. Profile and freeze IG points on at most 32 images. Block the task if a genuine multi-source setup is unavailable rather than reporting a single-source run as ensemble evidence. |
+Check the specification against this checkout before you write code:
 
-Two methods from the reviewed plan are deliberately out of scope until a frozen diffusion model exists on the server: **Unified Latent Optimization** and **DAELTA**. Neither `diffusers` nor any diffusion checkpoint is installed, and `requirements.lock` is hash-verified by preflight, so adding one is a reviewed environment change, not an attack task. Do not attempt either, and do not substitute an approximation.
+```bash
+python3 -m attacklab.cli validate-specs --config configs/pipeline/server.yaml
+```
+
+A `[BLOCK]` line means the task cannot run as specified; report it as `blocked`
+rather than working around it. A `[WARN ]` line is context you must carry into
+the handoff, not something to silence.
+
+Two detectors are configured, `vit_b_16` and `densenet121_dct`. Any method the
+literature describes as an ensemble therefore has at most two sources, and
+leave-one-detector-out leaves exactly one. Report such a run as an
+ensemble-of-two white-box variant, never as held-out transfer evidence.
+
+Unified Latent Optimization and DAELTA are out of scope while the server has no
+frozen diffusion model. Do not attempt either, and do not substitute an
+approximation.
 
 ## Required checks
 
