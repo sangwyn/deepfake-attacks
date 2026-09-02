@@ -396,6 +396,28 @@ Bootstrap:
 - устанавливает сам проект editable без повторной установки dependencies;
 - выполняет deep preflight.
 
+### Про `ensurepip` на Debian и Ubuntu
+
+Системный `python3.12` в Debian и Ubuntu поставляется **без** `ensurepip` —
+он вынесен в отдельный пакет `python3.12-venv`, а на общем сервере его
+установка требует root. Поэтому bootstrap не полагается на `ensurepip`:
+
+- если `ensurepip` доступен, `.venv` создаётся обычным способом;
+- если нет, окружение создаётся через `venv --without-pip`, после чего pip
+  ставится скриптом `get-pip.py` сразу нужных закреплённых версий.
+
+Проверка наличия pip выполняется отдельно от создания `.venv`, поэтому
+повторный запуск чинит и окружение, оставшееся без pip после неудачной
+попытки. Удалять `.venv` вручную не нужно.
+
+Источник `get-pip.py` при необходимости переопределяется (например для
+внутреннего зеркала или офлайн-установки):
+
+```bash
+GET_PIP_URL=https://внутреннее-зеркало/get-pip.py \
+  bash scripts/bootstrap_environment.sh
+```
+
 Если бинарник называется иначе:
 
 ```bash
@@ -1461,6 +1483,33 @@ GPUQ log path из status
 
 Исправление: запускать из canonical checkout или осознанно изменить versioned
 server contract отдельным reviewed commit.
+
+### `ensurepip is not available` / `No module named pip`
+
+Системный `python3.12` без пакета `python3.12-venv`. Устанавливать его через
+`apt` не требуется: bootstrap сам создаст окружение через `venv --without-pip`
+и поднимет pip из `get-pip.py`. Достаточно повторно запустить
+
+```bash
+bash scripts/bootstrap_environment.sh
+```
+
+Он же чинит `.venv`, оставшийся без pip после прошлой неудачной попытки;
+удалять каталог вручную не нужно. Если сервер без доступа в интернет —
+указать зеркало через `GET_PIP_URL`, см. раздел 8.
+
+### `opencode is not available on PATH`
+
+Бинарник лежит в `/home/aiattacks/.opencode/bin/`, которого нет в `PATH` по
+умолчанию. `scripts/run_campaign.py` ищет его через `shutil.which`, и argv
+воркеров начинается с голого `opencode`. Исправление:
+
+```bash
+echo 'export PATH="$HOME/.opencode/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Проверить в том же окружении, откуда будет запущена campaign, включая `tmux`.
 
 ### Missing detector weight
 
