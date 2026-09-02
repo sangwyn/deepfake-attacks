@@ -172,7 +172,40 @@ class IfgsmTests(unittest.TestCase):
         from attacks import ifgsm
 
         with self.assertRaises(ValueError):
-            ifgsm.attack(_image(), {}, torch.device("cpu"), source_model="densenet121_dct")
+            ifgsm.attack(_image(), {}, torch.device("cpu"), source_model="no_such_model")
+
+    def test_both_gradient_sources_produce_a_valid_budgeted_result(self):
+        """Both rows of the transfer matrix need a working gradient source."""
+
+        import torch.nn as nn
+
+        from attacks import fgsm, ifgsm
+
+        image = _image(seed=21)
+        for module in (ifgsm, fgsm):
+            for source, net in (
+                ("vit_b_16", nn.Sequential(nn.Flatten(), nn.Linear(3 * 224 * 224, 2))),
+                (
+                    "densenet121_dct",
+                    nn.Sequential(nn.Flatten(), nn.Linear(1 * 128 * 128, 2)),
+                ),
+            ):
+                with self.subTest(attack=module.__name__, source=source):
+                    self.assertIn(
+                        source, module.ATTACK_CONTRACT["supported_source_models"]
+                    )
+                    torch.manual_seed(0)
+                    output = module.attack(
+                        image,
+                        {source: {"model": net}},
+                        torch.device("cpu"),
+                        source_model=source,
+                        target_class=0,
+                    )
+                    self.assertEqual(output.dtype, np.uint8)
+                    self.assertEqual(output.shape, image.shape)
+                    delta = np.abs(output.astype(int) - image.astype(int)).max()
+                    self.assertLessEqual(int(delta), round(8 / 255 * 255))
 
 
 class FgsmTests(unittest.TestCase):

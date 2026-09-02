@@ -19,7 +19,7 @@ from attacklab.preprocessing import (
 
 ATTACK_CONTRACT = {
     "version": 1,
-    "supported_source_models": ["vit_b_16"],
+    "supported_source_models": ["vit_b_16", "densenet121_dct"],
     "description": "Targeted iterative FGSM in RGB pixel space.",
 }
 
@@ -27,8 +27,10 @@ ATTACK_CONTRACT = {
 def attack(image, classifiers, device, epsilon=8 / 255,
            step_size=2 / 255, iterations=10,
            source_model="vit_b_16", target_class=0):
-    if source_model != "vit_b_16":
-        raise ValueError("ifgsm supports only source_model='vit_b_16'")
+    if source_model not in ATTACK_CONTRACT["supported_source_models"]:
+        raise ValueError(
+            f"ifgsm does not support source_model={source_model!r}"
+        )
     if target_class not in {0, 1}:
         raise ValueError("target_class must be 0 or 1")
     if epsilon <= 0 or step_size <= 0 or iterations < 1:

@@ -13,7 +13,7 @@ baseline:
   attack: clean
 implementation:
   module: attacks.ifgsm
-  source_model: vit_b_16
+  source_model: each-valid-single-source
   targeted: true
   fidelity: 'frozen: preserve the existing behaviour byte for byte'
 parameters:
