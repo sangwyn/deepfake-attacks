@@ -20,6 +20,11 @@ Pipeline (research details in docs/PLAN.md):
 
 Hyper-parameters are module-level constants (edit to taste). Returns a
 same-size HWC uint8 RGB adversarial image.
+
+Black-box transfer: set the module constant DI_PROB = 0.5 (e.g.
+`import attacks.vida as vida; vida.DI_PROB = 0.5` before evaluation) to enable
+Diverse-Inputs during acquisition. DI raises cross-model transfer at a small
+cost to white-box fooling; leave DI_PROB = 0.0 for the best official score.
 """
 import torch
 import torch.nn as nn
@@ -35,6 +40,11 @@ REC_STEP = 0.5 / 255.0
 MU = 1.0
 KAPPA = 0.5
 LAMBDA_Q = 2.0
+# Input-diversity (DI, Xie et al.) for black-box transfer. Off by default
+# (it slightly lowers white-box fooling); set DI_PROB > 0 to randomly
+# resize+pad the input during acquisition, which boosts cross-model transfer.
+DI_PROB = 0.0
+DI_SCALE_LO = 0.8
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 GRAY = (0.299, 0.587, 0.114)
@@ -181,6 +191,23 @@ def _margin(branch, adv, target=0):
     return float(z[1 - target] - z[target])
 
 
+def _di(x, prob=DI_PROB, lo=DI_SCALE_LO, hi=1.0):
+    """Diverse-Inputs: with probability `prob`, randomly down-scale and
+    zero-pad the adversarial image (differentiable). Improves transfer to
+    unseen detectors; the official detector preprocessing is unchanged."""
+    if prob <= 0.0 or torch.rand(1, device=x.device).item() > prob:
+        return x
+    n, c, h, w = x.shape
+    s = lo + (hi - lo) * torch.rand(1, device=x.device).item()
+    nh, nw = max(1, round(h * s)), max(1, round(w * s))
+    xs = F.interpolate(x, size=(nh, nw), mode="bilinear", align_corners=False)
+    out = torch.zeros_like(x)
+    top = int(torch.randint(0, h - nh + 1, (1,), device=x.device).item())
+    left = int(torch.randint(0, w - nw + 1, (1,), device=x.device).item())
+    out[:, :, top:top + nh, left:left + nw] = xs
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # Main entry point (team template)
 # --------------------------------------------------------------------------- #
@@ -218,7 +245,8 @@ def attack(image, classifiers, device,
         return (x + d).clamp(0.0, 1.0)
 
     def loss_on(d):
-        return sum(_margin_loss(b(adv_of(d)), target) for b in branches.values())
+        adv = _di(adv_of(d)) if DI_PROB > 0 else adv_of(d)
+        return sum(_margin_loss(b(adv), target) for b in branches.values())
 
     def fooled_count(d):
         return sum(1 for b in branches.values() if _margin(b, adv_of(d), target) < 0)
