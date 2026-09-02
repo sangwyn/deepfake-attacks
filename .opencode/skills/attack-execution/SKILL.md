@@ -36,6 +36,16 @@ Take gradients through `attacklab/preprocessing.py`, never through a private cop
 
 `attacks/ifgsm.py` is the reference consumer. Read it before writing a new module.
 
+## Staging frozen inputs
+
+The runner starts by checking that the experiment config, server config, manifest, and environment lock are all present in Git, and aborts otherwise. Your config is new, so stage it — together with the attack module, its tests, and the job spec — before you submit:
+
+```bash
+git add attacks/<name>.py configs/experiments/<task>.yaml tests/<test file> tracking/jobs/<TASK_ID>/job-spec.json
+```
+
+Stage only what this task produced, and never commit: a commit is a human or controller action. An unstaged config does not fail early — it fails after the scheduler has already reserved a GPU.
+
 ## 3. Local checks are CPU-only
 
 Run only focused unit/static checks allowed by the agent policy. Do not invoke a command that imports the project in a way that initializes CUDA unless that test is explicitly documented as CPU-only. Never set a GPU environment variable, probe GPU availability, run the experiment, run the verifier, install a package, or download an input.

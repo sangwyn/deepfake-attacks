@@ -2,6 +2,17 @@
 
 This is a standalone campaign roadmap. Do not load it into every OpenCode session. Use `OPENCODE_LUNA.md` and `/attack <name> <scope>` for one attack at a time; return here only to choose the next run and apply decision gates.
 
+> **Precedence.** The attack set was revised on 2026-09-03 to the reviewed
+> baseline suite: `fgsm`, `pgd`, `mi-di-fgsm`, `ensemble-mi-eot`, `ssa`,
+> `mig-cow`, with `ifgsm` retained only as a pipeline regression.
+> `OPENCODE_LUNA.md` and `CAMPAIGN.yaml` are authoritative for which attacks
+> exist, their parameters, and their order. The phases below still describe
+> `mifgsm`, `di-mi-fgsm`, `ti-di-mi-fgsm`, `frequency-eot`, `prototype`, and
+> `dd-fcma`, which are no longer scheduled; read them as methodology, not as a
+> task list, and never apply a decision gate to an attack the campaign does not
+> run. Unified Latent Optimization and DAELTA are out of scope while the server
+> has no frozen diffusion model.
+
 ## 1. Goal and scope
 
 Implement, integrate, configure, test, and evaluate selected targeted attacks against the spatial ViT and DCT DenseNet detectors. Shared pipeline components are contracts, not assumptions: each must pass preflight before use. An absent runner, detector adapter, manifest, checkpoint, validator, or storage interface blocks the dependent task and must not be replaced ad hoc inside an attack session.

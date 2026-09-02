@@ -26,6 +26,13 @@ permission:
     "git diff *": allow
     "git rev-parse *": allow
     "git ls-files *": allow
+    # Staging, never committing: the runner refuses a scientific input that is
+    # not in Git, and the worker is the only party that knows which files it
+    # froze. git add records that intent without writing project history.
+    "git add attacks/*": allow
+    "git add configs/experiments/*": allow
+    "git add tests/*": allow
+    "git add tracking/jobs/*": allow
     "python3 scripts/preflight.py *": allow
     "python3 -m pytest *": allow
     "python3 -m unittest *": allow

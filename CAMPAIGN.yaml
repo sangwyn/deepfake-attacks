@@ -26,19 +26,21 @@ control:
 
 profiles:
   development:
-    description: Smoke and seed-0 development evaluation for every attack, followed by finalist selection.
+    description: >-
+      Reviewed baseline suite in ascending cost order, alternating smoke and
+      development per attack. Cost is dominated by gradient evaluations per
+      image: FGSM 1, PGD and MI-DI-FGSM about 10, ensemble EoT about 100,
+      SSA about 200, MIG-COW several hundred.
     tasks:
+      # Pipeline regression, not a research result. The only already-implemented
+      # attack; it proves the checkout, environment, queue, and verifier are
+      # sound before any agent writes new code.
       - id: ifgsm-smoke
         attack: ifgsm
         scope: smoke
         required: true
 
-      - id: ifgsm-development
-        attack: ifgsm
-        scope: development
-        required: true
-        needs: [ifgsm-smoke]
-
+      # 1 gradient evaluation per image.
       - id: fgsm-smoke
         attack: fgsm
         scope: smoke
@@ -51,11 +53,12 @@ profiles:
         required: true
         needs: [fgsm-smoke]
 
+      # 10 gradient evaluations per image.
       - id: pgd-smoke
         attack: pgd
         scope: smoke
         required: true
-        needs: [ifgsm-development]
+        needs: [fgsm-development]
 
       - id: pgd-development
         attack: pgd
@@ -63,59 +66,56 @@ profiles:
         required: true
         needs: [pgd-smoke]
 
-      - id: mifgsm-smoke
-        attack: mifgsm
+      # 10 evaluations plus the input-diversity transform.
+      - id: mi-di-fgsm-smoke
+        attack: mi-di-fgsm
         scope: smoke
         required: true
-        needs: [ifgsm-development]
+        needs: [pgd-development]
 
-      - id: mifgsm-development
-        attack: mifgsm
+      - id: mi-di-fgsm-development
+        attack: mi-di-fgsm
         scope: development
         required: true
-        needs: [mifgsm-smoke]
+        needs: [mi-di-fgsm-smoke]
 
-      - id: di-mi-fgsm-smoke
-        attack: di-mi-fgsm
+      # About 100 evaluations: 10 steps over 2 sources and 5 EoT samples.
+      # Optional: with two detectors the ensemble cannot be held out, so this
+      # produces robustness evidence rather than a transfer result.
+      - id: ensemble-mi-eot-smoke
+        attack: ensemble-mi-eot
+        scope: smoke
+        required: false
+        needs: [mi-di-fgsm-development]
+
+      - id: ensemble-mi-eot-development
+        attack: ensemble-mi-eot
+        scope: development
+        required: false
+        needs: [ensemble-mi-eot-smoke]
+
+      # About 200 evaluations: 10 steps over 20 spectrum samples.
+      - id: ssa-smoke
+        attack: ssa
         scope: smoke
         required: true
-        needs: [mifgsm-development]
+        needs: [mi-di-fgsm-development]
+        after: [ensemble-mi-eot-development]
 
-      - id: di-mi-fgsm-development
-        attack: di-mi-fgsm
+      - id: ssa-development
+        attack: ssa
         scope: development
         required: true
-        needs: [di-mi-fgsm-smoke]
+        needs: [ssa-smoke]
 
-      - id: ti-di-mi-fgsm-smoke
-        attack: ti-di-mi-fgsm
-        scope: smoke
-        required: true
-        needs: [di-mi-fgsm-development]
-
-      - id: ti-di-mi-fgsm-development
-        attack: ti-di-mi-fgsm
-        scope: development
-        required: true
-        needs: [ti-di-mi-fgsm-smoke]
-
-      - id: frequency-eot-smoke
-        attack: frequency-eot
-        scope: smoke
-        required: true
-        needs: [ti-di-mi-fgsm-development]
-
-      - id: frequency-eot-development
-        attack: frequency-eot
-        scope: development
-        required: true
-        needs: [frequency-eot-smoke]
-
+      # Several hundred evaluations. Optional: leave-one-detector-out leaves a
+      # single source here, so the worker is expected to block rather than
+      # report a degenerate ensemble as transfer evidence.
       - id: mig-cow-smoke
         attack: mig-cow
         scope: smoke
         required: false
-        needs: [frequency-eot-development]
+        needs: [ssa-development]
 
       - id: mig-cow-development
         attack: mig-cow
@@ -123,36 +123,11 @@ profiles:
         required: false
         needs: [mig-cow-smoke]
 
-      - id: prototype-smoke
-        attack: prototype
-        scope: smoke
-        required: false
-        after: [mig-cow-development]
-
-      - id: prototype-development
-        attack: prototype
-        scope: development
-        required: false
-        needs: [prototype-smoke]
-
-      - id: dd-fcma-smoke
-        attack: dd-fcma
-        scope: smoke
-        required: true
-        needs: [frequency-eot-development]
-        after: [mig-cow-development, prototype-development]
-
-      - id: dd-fcma-development
-        attack: dd-fcma
-        scope: development
-        required: true
-        needs: [dd-fcma-smoke]
-
       - id: select-finalists
         kind: review
         required: true
-        needs: [dd-fcma-development]
-        after: [mig-cow-development, prototype-development]
+        needs: [ssa-development]
+        after: [ensemble-mi-eot-development, mig-cow-development]
 
   full:
     description: Replication, budget sensitivity, full-data, and official runs for frozen finalists.

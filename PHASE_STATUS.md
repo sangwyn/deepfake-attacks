@@ -4,16 +4,15 @@ This Git-tracked ledger records verifier-approved outcomes; it never authorizes 
 
 | Attack | Status | Evidence/results |
 |---|---|---|
+| I-FGSM regression | passed | manual smoke, 8 images, verifier passed |
 | FGSM | not started | — |
-| I-FGSM regression | not started | — |
-| PGD | not started | — |
-| MI-FGSM | not started | — |
-| DI-MI-FGSM | blocked on MI | — |
-| TI-DI-MI-FGSM | blocked on DI | — |
-| Frequency EOT | blocked on transfer baseline | — |
-| MIG-COW | not started | — |
-| DD-FCMA | blocked on component decisions | — |
-| Prototype | optional | — |
+| PGD | blocked on FGSM | — |
+| MI-DI-FGSM | blocked on PGD | — |
+| Ensemble MI-FGSM + EoT | optional, blocked on MI-DI | — |
+| SSA / S2I-FGSM | blocked on MI-DI | — |
+| MIG-COW | optional, degenerate with two detectors | — |
+| Unified Latent Optimization | out of scope, no diffusion model | — |
+| DAELTA | out of scope, no diffusion model | — |
 
 Use `passed`, `failed`, or `blocked` only after controller reconciliation. Every `passed` row must link the frozen config, result summary, evidence, and deterministic verifier report; include the queue job ID in the evidence text. Smoke success is engineering evidence, not a research decision. Record `retain`, `reject`, or `baseline` only after the independent reviewer applies the frozen gates.
 

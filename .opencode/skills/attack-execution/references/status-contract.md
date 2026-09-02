@@ -9,8 +9,8 @@ Required in every state:
 ```json
 {
   "schema_version": 1,
-  "task_id": "mifgsm-smoke",
-  "attack": "mifgsm",
+  "task_id": "fgsm-smoke",
+  "attack": "fgsm",
   "scope": "smoke",
   "outcome": "queued",
   "decision": "pending",
@@ -25,9 +25,9 @@ Allowed `outcome` values are `queued`, `running`, `passed`, `failed`, `blocked`,
 ```json
 {
   "job_id": "<gpuq job id>",
-  "job_spec": "tracking/jobs/mifgsm-smoke/job-spec.json",
+  "job_spec": "tracking/jobs/fgsm-smoke/job-spec.json",
   "configs": ["configs/.../resolved.yaml"],
-  "evidence": ["tracking/jobs/mifgsm-smoke/cpu-tests.json"]
+  "evidence": ["tracking/jobs/fgsm-smoke/cpu-tests.json"]
 }
 ```
 
@@ -38,7 +38,7 @@ The worker may emit `queued`, `failed`, or `blocked` only. The deterministic con
 ```json
 {
   "job_id": "<gpuq job id>",
-  "job_spec": "tracking/jobs/mifgsm-smoke/job-spec.json",
+  "job_spec": "tracking/jobs/fgsm-smoke/job-spec.json",
   "configs": ["tracking/runs/<run-id>/resolved-config.yaml"],
   "results": ["tracking/runs/<run-id>/summary.json"],
   "evidence": ["tracking/runs/<run-id>/norm-audit.json"],
@@ -58,7 +58,7 @@ Every review response requires `schema_version`, `task`, `outcome`, and a non-em
   "task": "select-finalists",
   "outcome": "passed",
   "summary": "Frozen gates applied to verifier-approved development runs.",
-  "finalists": ["mifgsm"],
+  "finalists": ["ssa"],
   "evidence": ["tracking/runs/.../validation.json", "tracking/runs/.../summary.json"]
 }
 ```
