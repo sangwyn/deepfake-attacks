@@ -175,5 +175,35 @@ class IfgsmTests(unittest.TestCase):
             ifgsm.attack(_image(), {}, torch.device("cpu"), source_model="densenet121_dct")
 
 
+class FgsmTests(unittest.TestCase):
+    def test_fgsm_returns_uint8_with_finite_targeted_gradient_and_budget(self):
+        import torch.nn as nn
+
+        from attacks import fgsm
+
+        torch.manual_seed(2)
+        model = nn.Sequential(nn.Flatten(), nn.Linear(3 * 224 * 224, 2))
+        image = _image(seed=13)
+        output = fgsm.attack(
+            image, {"vit_b_16": {"model": model}}, torch.device("cpu"), target_class=0
+        )
+        self.assertEqual(output.dtype, np.uint8)
+        self.assertEqual(output.shape, image.shape)
+        self.assertLessEqual(int(np.abs(output.astype(int) - image.astype(int)).max()), 8)
+
+    def test_fgsm_is_deterministic_for_a_fixed_model(self):
+        import torch.nn as nn
+
+        from attacks import fgsm
+
+        torch.manual_seed(3)
+        model = nn.Sequential(nn.Flatten(), nn.Linear(3 * 224 * 224, 2))
+        image = _image(seed=14)
+        classifiers = {"vit_b_16": {"model": model}}
+        first = fgsm.attack(image, classifiers, torch.device("cpu"), target_class=1)
+        second = fgsm.attack(image, classifiers, torch.device("cpu"), target_class=1)
+        self.assertTrue(np.array_equal(first, second))
+
+
 if __name__ == "__main__":
     unittest.main()
