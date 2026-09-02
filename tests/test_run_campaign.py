@@ -197,8 +197,6 @@ class CampaignTests(unittest.TestCase):
         with self.assertRaises(run_campaign.CampaignError):
             run_campaign.validate_finalists_development(state, ["dd-fcma"])
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class QueuedLifecycleTests(unittest.TestCase):
@@ -528,3 +526,7 @@ class ReviewStatusTests(unittest.TestCase):
                 path, self.TASK, 2, self.ALLOWED
             )
             self.assertEqual(status["outcome"], "blocked")
+
+
+if __name__ == "__main__":
+    unittest.main()

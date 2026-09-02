@@ -117,8 +117,6 @@ class ScientificContractTests(unittest.TestCase):
         self.assertIn("missing required artifacts", report["errors"][0])
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class SchemaTests(unittest.TestCase):
@@ -214,3 +212,32 @@ class SchemaTests(unittest.TestCase):
         self.assertEqual(timing["started_at"], "2026-01-01T00:00:00+00:00")
         self.assertEqual(timing["finished_at"], "2026-01-01T00:00:08+00:00")
         self.assertEqual(timing["elapsed_seconds"], 8.25)
+
+
+class TestLayoutTests(unittest.TestCase):
+    """A test defined after unittest.main() never runs under direct execution."""
+
+    def test_no_test_class_follows_the_main_guard(self):
+        root = Path(__file__).resolve().parents[1]
+        for path in sorted((root / "tests").glob("test_*.py")):
+            text = path.read_text(encoding="utf-8")
+            marker = 'if __name__ == "__main__":'
+            index = text.find(marker)
+            if index == -1:
+                continue
+            trailing = text[index:]
+            self.assertNotIn(
+                "\nclass ",
+                trailing,
+                f"{path.name} defines a test class after the __main__ guard; "
+                "python tests/<file>.py would exit before reaching it",
+            )
+            self.assertNotIn(
+                "\ndef test_",
+                trailing,
+                f"{path.name} defines a test function after the __main__ guard",
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

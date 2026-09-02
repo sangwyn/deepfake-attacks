@@ -331,8 +331,6 @@ class SchedulerTests(ProjectFixture):
                 self.assertEqual(database.get(record["id"])["state"], "queued")
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class SharedGpuPolicyTests(unittest.TestCase):
@@ -400,3 +398,7 @@ class SharedGpuPolicyTests(unittest.TestCase):
                 allow_shared=True,
             )
         )
+
+
+if __name__ == "__main__":
+    unittest.main()
