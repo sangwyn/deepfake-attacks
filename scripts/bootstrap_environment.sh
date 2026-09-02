@@ -52,5 +52,9 @@ fi
 "${VENV_PATH}/bin/python" -m pip install --requirement \
   "${PROJECT_ROOT}/requirements.lock"
 "${VENV_PATH}/bin/python" -m pip install --no-deps --editable "${PROJECT_ROOT}"
+# attacklab.cli rejects absolute paths on purpose: every path it accepts must
+# stay inside the project, which is what keeps a job spec from reaching out of
+# the repository. Pass the project-relative form.
+cd "${PROJECT_ROOT}"
 "${VENV_PATH}/bin/python" -m attacklab.cli preflight \
-  --config "${PROJECT_ROOT}/configs/pipeline/server.yaml" --deep
+  --config configs/pipeline/server.yaml --deep
