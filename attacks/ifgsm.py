@@ -5,6 +5,11 @@ from torchvision.transforms import functional as TF
 
 def attack(image, classifiers, device, epsilon=8 / 255,
            step_size=2 / 255, iterations=10):
+    if 'vit_b_16' not in classifiers:
+        raise ValueError(
+            "The ifgsm attack requires the 'vit_b_16' classifier. "
+            "Use attack: identity for an evaluation-only smoke test."
+        )
     model = classifiers['vit_b_16']['model']
     original = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)
     original = original.float().to(device) / 255

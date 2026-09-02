@@ -1,0 +1,13 @@
+original_root: /home/aiattacks/pengyang/Test/group1/test1
+attack: dual_pgd
+save_attacked_dir: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/attacked_B1
+models_dir: /home/aiattacks/pengyang/deepfake-attacks/weights
+save_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/results_B1.json
+classifiers:
+  - vit_b_16
+  - densenet121_dct
+dct_log_scale: true
+weights:
+  vit_b_16: 1.0
+  densenet121_dct: 1.0
+aggregate: sum

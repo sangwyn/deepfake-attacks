@@ -16,7 +16,7 @@ Supported classifiers
 
 YAML configuration (WHAT YOU MUST PROVIDE)
 -------------------------------
-  original_root  : path to orignal Test 
+  original_root  : path to original Test images
   attack         : attack module name from the attacks folder
   save_attacked_dir : optional directory for attacked images
   models_dir     : folder containing <model_name>.pth weight files
@@ -58,11 +58,12 @@ Usage
         - models_dir: with the .pth weight files
         - save_json: where you want the results JSON to be written
   3. Run the evaluation:
-  python AADD_2026_evaluation.py --config AADD_2026_config.yaml
+  python evaluate.py --config configs/AADD_2026_config.yaml
 """
 
 import argparse
 from importlib import import_module
+import inspect
 import json
 import warnings
 from pathlib import Path
@@ -148,7 +149,8 @@ def build_dct_transform(log_scale: bool = True):
     """
     def _transform(pil_img: Image.Image) -> torch.Tensor:
         img = pil_img.convert('L')
-        if max(img.size) > 256:
+        # Always create the 256x256 canvas expected by the checkpoint.
+        if img.size != (256, 256):
             img = img.resize((256, 256), Image.Resampling.LANCZOS)
         w, h  = img.size
         left  = (w - 128) // 2
@@ -211,9 +213,21 @@ def np_to_lpips_tensor(np_img: np.ndarray,
 # ============================================================================
 
 def load_cfg(cfg_path: str) -> dict:
-    with open(cfg_path) as f:
+    cfg_file = Path(cfg_path).expanduser().resolve()
+    with cfg_file.open() as f:
         cfg = yaml.safe_load(f)
-    print(f"[CONFIG] Loaded from {cfg_path}")
+    if not isinstance(cfg, dict):
+        raise ValueError(f"Configuration must be a YAML mapping: {cfg_file}")
+
+    # Resolve relative paths against the configuration file, not the shell cwd.
+    for key in ('original_root', 'models_dir', 'save_attacked_dir', 'save_json'):
+        value = cfg.get(key)
+        if value:
+            path = Path(value).expanduser()
+            if not path.is_absolute():
+                cfg[key] = str(cfg_file.parent / path)
+
+    print(f"[CONFIG] Loaded from {cfg_file}")
     return cfg
 
 
@@ -226,6 +240,16 @@ def get_device(choice: str) -> torch.device:
     return dev
 
 
+def load_attack(name: str):
+    """Load an attack module and fail with an actionable error."""
+    if not name or not name.replace('_', '').isalnum():
+        raise ValueError(f"Invalid attack name: {name!r}")
+    try:
+        return import_module(f"attacks.{name}").attack
+    except (ImportError, AttributeError) as exc:
+        raise ValueError(f"Could not load attack 'attacks.{name}'") from exc
+
+
 # ============================================================================
 # MAIN EVALUATION
 # ============================================================================
@@ -234,19 +258,17 @@ def evaluate(cfg: dict):
     device    = get_device(cfg.get('device', 'auto'))
     log_scale = bool(cfg.get('dct_log_scale', True))
     alpha     = float(cfg.get('alpha', 0.5))
-    attack_fn = import_module(f"attacks.{cfg['attack']}").attack
-    save_attacked_dir = cfg['save_attacked_dir']
-
-    # ── LPIPS perceptual similarity ──────────────────────────────────────
-    lpips_fn = lpips.LPIPS(net='alex').to(device)
-    lpips_fn.eval()
+    attack_fn = load_attack(cfg.get('attack', 'identity'))
+    save_attacked_dir = cfg.get('save_attacked_dir')
 
     # ── Per-classifier weights from YAML (default 1.0) ───────────────────
     weight_cfg: dict = cfg.get('weights', {})
 
     # ── Load classifiers ─────────────────────────────────────────────────
     models_dir  = Path(cfg['models_dir'])
-    clf_names   = cfg['classifiers']
+    clf_names   = cfg.get('classifiers', [])
+    if not clf_names:
+        raise ValueError("Configuration must contain at least one classifier")
     classifiers = {}
 
     for name in clf_names:
@@ -268,6 +290,10 @@ def evaluate(cfg: dict):
             'lpips_vals': [],
         }
 
+    # Initialize LPIPS only after configuration and checkpoint validation.
+    lpips_fn = lpips.LPIPS(net='alex').to(device)
+    lpips_fn.eval()
+
     print(f"[SETUP] {len(classifiers)} classifier(s) loaded\n")
     for n, p in classifiers.items():
         print(f"  {n:<22s}  clf_weight={p['clf_weight']:.2f}")
@@ -275,9 +301,38 @@ def evaluate(cfg: dict):
 
     # ── Collect image pairs ───────────────────────────────────────────────
     original_root = Path(cfg['original_root'])
+    if not original_root.is_dir():
+        raise FileNotFoundError(
+            f"original_root does not exist or is not a directory: {original_root}"
+        )
 
     orig_paths = [p for p in original_root.rglob('*')
                   if p.is_file() and p.suffix.lower() in IMAGE_EXTS]
+    orig_paths.sort()
+    exclude_root = cfg.get('exclude_root')
+    if exclude_root:
+        excluded = {
+            p.name for p in Path(exclude_root).rglob('*')
+            if p.is_file() and p.suffix.lower() in IMAGE_EXTS
+        }
+        orig_paths = [p for p in orig_paths if p.name not in excluded]
+    sample_offset = int(cfg.get('sample_offset', 0))
+    if sample_offset < 0:
+        raise ValueError('sample_offset must be non-negative')
+    if sample_offset:
+        orig_paths = orig_paths[sample_offset:]
+    max_images = cfg.get('max_images')
+    tail_images = cfg.get('tail_images')
+    if tail_images is not None:
+        tail_images = int(tail_images)
+        if tail_images <= 0:
+            raise ValueError("tail_images must be positive")
+        orig_paths = orig_paths[-tail_images:]
+    if max_images is not None:
+        max_images = int(max_images)
+        if max_images <= 0:
+            raise ValueError("max_images must be positive")
+        orig_paths = orig_paths[:max_images]
     if not orig_paths:
         raise RuntimeError(f"No images found under: {original_root}")
     print(f"[DATA] {len(orig_paths)} original image(s) found\n")
@@ -291,7 +346,19 @@ def evaluate(cfg: dict):
         print(f"[IMAGE] {rel}")
 
         img_o = pil_to_np_rgb(o_path)
-        img_a = attack_fn(img_o, classifiers, device)
+        attack_kwargs = {
+            key: cfg[key] for key in (
+                'epsilon', 'step_size', 'iterations', 'target',
+                'vit_weight', 'dct_weight', 'normalize_gradients',
+                'dct_log_scale', 'dct_resize_mode', 'fusion_mode',
+            ) if key in cfg
+        }
+        supported_kwargs = inspect.signature(attack_fn).parameters
+        attack_kwargs = {
+            key: value for key, value in attack_kwargs.items()
+            if key in supported_kwargs
+        }
+        img_a = attack_fn(img_o, classifiers, device, **attack_kwargs)
 
         if save_attacked_dir:
             save_path = Path(save_attacked_dir) / rel
