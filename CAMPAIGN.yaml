@@ -27,108 +27,202 @@ control:
 profiles:
   development:
     description: >-
-      Reviewed baseline suite in ascending cost order, alternating smoke and
-      development per attack. Cost is dominated by gradient evaluations per
-      image: FGSM 1, PGD and MI-DI-FGSM about 10, ensemble EoT about 100,
-      SSA about 200, MIG-COW several hundred.
+      Обе стороны матрицы переноса для каждой атаки, задачи в порядке
+      возрастания стоимости. Суффикс задачи — детектор, от которого берётся
+      градиент; цели всегда оба детектора.
     tasks:
-      # Pipeline regression, not a research result. The only already-implemented
-      # attack; it proves the checkout, environment, queue, and verifier are
-      # sound before any agent writes new code.
-      - id: ifgsm-smoke
+      # Регрессия пайплайна: единственная проверенная атака.
+      - id: ifgsm-vit-smoke
         attack: ifgsm
         scope: smoke
+        source: vit_b_16
         required: true
 
-      # 1 gradient evaluation per image.
-      - id: fgsm-smoke
+      - id: ifgsm-dct-smoke
+        attack: ifgsm
+        scope: smoke
+        source: densenet121_dct
+        required: true
+        needs: [ifgsm-vit-smoke]
+
+      # 1 вычисление градиента на изображение.
+      - id: fgsm-vit-smoke
         attack: fgsm
         scope: smoke
+        source: vit_b_16
         required: true
-        needs: [ifgsm-smoke]
+        needs: [ifgsm-dct-smoke]
 
-      - id: fgsm-development
+      - id: fgsm-vit-development
         attack: fgsm
         scope: development
+        source: vit_b_16
         required: true
-        needs: [fgsm-smoke]
+        needs: [fgsm-vit-smoke]
 
-      # 10 gradient evaluations per image.
-      - id: pgd-smoke
+      - id: fgsm-dct-smoke
+        attack: fgsm
+        scope: smoke
+        source: densenet121_dct
+        required: true
+        needs: [fgsm-vit-development]
+
+      - id: fgsm-dct-development
+        attack: fgsm
+        scope: development
+        source: densenet121_dct
+        required: true
+        needs: [fgsm-dct-smoke]
+
+      # 10 вычислений.
+      - id: pgd-vit-smoke
         attack: pgd
         scope: smoke
+        source: vit_b_16
         required: true
-        needs: [fgsm-development]
+        needs: [fgsm-dct-development]
 
-      - id: pgd-development
+      - id: pgd-vit-development
         attack: pgd
         scope: development
+        source: vit_b_16
         required: true
-        needs: [pgd-smoke]
+        needs: [pgd-vit-smoke]
 
-      # 10 evaluations plus the input-diversity transform.
-      - id: mi-di-fgsm-smoke
+      - id: pgd-dct-smoke
+        attack: pgd
+        scope: smoke
+        source: densenet121_dct
+        required: true
+        needs: [pgd-vit-development]
+
+      - id: pgd-dct-development
+        attack: pgd
+        scope: development
+        source: densenet121_dct
+        required: true
+        needs: [pgd-dct-smoke]
+
+      # 10 вычислений плюс преобразование входа.
+      - id: mi-di-fgsm-vit-smoke
         attack: mi-di-fgsm
         scope: smoke
+        source: vit_b_16
         required: true
-        needs: [pgd-development]
+        needs: [pgd-dct-development]
 
-      - id: mi-di-fgsm-development
+      - id: mi-di-fgsm-vit-development
         attack: mi-di-fgsm
         scope: development
+        source: vit_b_16
         required: true
-        needs: [mi-di-fgsm-smoke]
+        needs: [mi-di-fgsm-vit-smoke]
 
-      # About 100 evaluations: 10 steps over 2 sources and 5 EoT samples.
-      # Optional: with two detectors the ensemble cannot be held out, so this
-      # produces robustness evidence rather than a transfer result.
-      - id: ensemble-mi-eot-smoke
+      - id: mi-di-fgsm-dct-smoke
+        attack: mi-di-fgsm
+        scope: smoke
+        source: densenet121_dct
+        required: true
+        needs: [mi-di-fgsm-vit-development]
+
+      - id: mi-di-fgsm-dct-development
+        attack: mi-di-fgsm
+        scope: development
+        source: densenet121_dct
+        required: true
+        needs: [mi-di-fgsm-dct-smoke]
+
+      # ~100: 10 шагов на 2 источника и 5 EoT-выборок.
+      - id: ensemble-mi-eot-vit-smoke
         attack: ensemble-mi-eot
         scope: smoke
+        source: vit_b_16
         required: false
-        needs: [mi-di-fgsm-development]
+        needs: [mi-di-fgsm-dct-development]
 
-      - id: ensemble-mi-eot-development
+      - id: ensemble-mi-eot-vit-development
         attack: ensemble-mi-eot
         scope: development
+        source: vit_b_16
         required: false
-        needs: [ensemble-mi-eot-smoke]
+        needs: [ensemble-mi-eot-vit-smoke]
 
-      # About 200 evaluations: 10 steps over 20 spectrum samples.
-      - id: ssa-smoke
+      - id: ensemble-mi-eot-dct-smoke
+        attack: ensemble-mi-eot
+        scope: smoke
+        source: densenet121_dct
+        required: false
+        needs: [ensemble-mi-eot-vit-development]
+
+      - id: ensemble-mi-eot-dct-development
+        attack: ensemble-mi-eot
+        scope: development
+        source: densenet121_dct
+        required: false
+        needs: [ensemble-mi-eot-dct-smoke]
+
+      # ~200: 10 шагов на 20 выборок спектра.
+      - id: ssa-vit-smoke
         attack: ssa
         scope: smoke
+        source: vit_b_16
         required: true
-        needs: [mi-di-fgsm-development]
-        after: [ensemble-mi-eot-development]
+        needs: [ensemble-mi-eot-dct-development]
 
-      - id: ssa-development
+      - id: ssa-vit-development
         attack: ssa
         scope: development
+        source: vit_b_16
         required: true
-        needs: [ssa-smoke]
+        needs: [ssa-vit-smoke]
 
-      # Several hundred evaluations. Optional: leave-one-detector-out leaves a
-      # single source here, so the worker is expected to block rather than
-      # report a degenerate ensemble as transfer evidence.
-      - id: mig-cow-smoke
+      - id: ssa-dct-smoke
+        attack: ssa
+        scope: smoke
+        source: densenet121_dct
+        required: true
+        needs: [ssa-vit-development]
+
+      - id: ssa-dct-development
+        attack: ssa
+        scope: development
+        source: densenet121_dct
+        required: true
+        needs: [ssa-dct-smoke]
+
+      # Несколько сотен вычислений.
+      - id: mig-cow-vit-smoke
         attack: mig-cow
         scope: smoke
+        source: vit_b_16
         required: false
-        needs: [ssa-development]
+        needs: [ssa-dct-development]
 
-      - id: mig-cow-development
+      - id: mig-cow-vit-development
         attack: mig-cow
         scope: development
+        source: vit_b_16
         required: false
-        needs: [mig-cow-smoke]
+        needs: [mig-cow-vit-smoke]
+
+      - id: mig-cow-dct-smoke
+        attack: mig-cow
+        scope: smoke
+        source: densenet121_dct
+        required: false
+        needs: [mig-cow-vit-development]
+
+      - id: mig-cow-dct-development
+        attack: mig-cow
+        scope: development
+        source: densenet121_dct
+        required: false
+        needs: [mig-cow-dct-smoke]
 
       - id: select-finalists
         kind: review
         required: true
-        needs: [ssa-development]
-        after: [ensemble-mi-eot-development, mig-cow-development]
-
+        needs: [mig-cow-dct-development]
   full:
     description: Replication, budget sensitivity, full-data, and official runs for frozen finalists.
     source_profile: development

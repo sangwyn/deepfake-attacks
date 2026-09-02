@@ -147,6 +147,11 @@ def validate_development_tasks(tasks: Any) -> None:
                 raise CampaignError(f"Attack task {task_id} has no attack name")
             if raw.get("scope") not in {"smoke", "development"}:
                 raise CampaignError(f"Attack task {task_id} has an invalid scope")
+            source = raw.get("source")
+            if not isinstance(source, str) or not source:
+                raise CampaignError(
+                    f"Attack task {task_id} must name the gradient source detector"
+                )
         for field in ("needs", "after"):
             dependencies = raw.get(field, [])
             if not isinstance(dependencies, list) or not all(
@@ -178,6 +183,7 @@ def materialize_tasks(raw_tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if task["kind"] == "attack":
             task["attack"] = raw["attack"]
             task["scope"] = raw["scope"]
+            task["source"] = raw["source"]
         tasks.append(task)
     return tasks
 
@@ -225,6 +231,7 @@ def build_full_tasks(
                 "attempts": [],
                 "attack": attack,
                 "scope": "full",
+                "source": "vit_b_16",
             }
         )
         previous = task_id
@@ -774,7 +781,15 @@ def task_command(
     if task["kind"] == "attack":
         # The task id is passed explicitly so the worker's status contract does
         # not have to rely on the <attack>-<scope> naming convention.
-        command.extend([task["attack"], task["scope"], str(status_path), task["id"]])
+        command.extend(
+            [
+                task["attack"],
+                task["scope"],
+                str(status_path),
+                task["id"],
+                task["source"],
+            ]
+        )
     else:
         command.extend([str(status_path), str(run_dir)])
     return command

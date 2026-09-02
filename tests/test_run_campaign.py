@@ -93,7 +93,7 @@ class CampaignTests(unittest.TestCase):
     def test_manifest_is_valid_and_ordered(self):
         manifest = run_campaign.load_manifest(run_campaign.DEFAULT_MANIFEST)
         tasks = manifest["profiles"]["development"]["tasks"]
-        self.assertEqual(tasks[0]["id"], "ifgsm-smoke")
+        self.assertEqual(tasks[0]["id"], "ifgsm-vit-smoke")
         self.assertEqual(tasks[-1]["id"], "select-finalists")
 
     def test_full_tasks_are_unique_and_sequential(self):
@@ -212,6 +212,7 @@ class QueuedLifecycleTests(unittest.TestCase):
                     "id": "fgsm-smoke",
                     "attack": "fgsm",
                     "scope": "smoke",
+                    "source": "vit_b_16",
                     "required": True,
                 }
             ]
@@ -234,10 +235,11 @@ class QueuedLifecycleTests(unittest.TestCase):
         run_campaign.save_state(state_path, state)
 
         def fake_child(command, _log_path):
-            # argv tail is <attack> <scope> <status-file> <task-id>.
-            self.assertEqual(command[-1], "fgsm-smoke")
+            # argv tail: <attack> <scope> <status-file> <task-id> <source>.
+            self.assertEqual(command[-1], "vit_b_16")
+            self.assertEqual(command[-2], "fgsm-smoke")
             _write_status(
-                Path(command[-2]),
+                Path(command[-3]),
                 outcome="queued",
                 job_id=job_id,
                 job_spec="tracking/jobs/fgsm-smoke/job-spec.json",

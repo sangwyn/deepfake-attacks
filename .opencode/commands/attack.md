@@ -5,9 +5,9 @@ model: naapi/gpt-5.6-luna
 subtask: false
 ---
 
-Treat `$1` as `ATTACK`, `$2` as `RUN_SCOPE`, optional `$3` as the controller-owned `STATUS_FILE`, and optional `$4` as `TASK_ID`. The campaign controller always supplies both `$3` and `$4`. When `$4` is absent, this is a manual invocation: use `<ATTACK>-<RUN_SCOPE>` as the task ID.
+Treat `$1` as `ATTACK`, `$2` as `RUN_SCOPE`, optional `$3` as the controller-owned `STATUS_FILE`, optional `$4` as `TASK_ID`, and optional `$5` as `SOURCE_MODEL` — the detector the gradient is taken from. When `$5` is absent, use the source the specification names; if it names `each-valid-single-source`, this is a manual invocation and you must pick one explicitly and say which. The campaign controller always supplies both `$3` and `$4`. When `$4` is absent, this is a manual invocation: use `<ATTACK>-<RUN_SCOPE>` as the task ID.
 
-Write `TASK_ID` verbatim into the status document. The controller rejects a status whose `task_id` does not match the task it dispatched.
+Freeze `SOURCE_MODEL` into the experiment config as `attack.source_model`; the attack must declare it in `ATTACK_CONTRACT`. Write `TASK_ID` verbatim into the status document. The controller rejects a status whose `task_id` does not match the task it dispatched.
 
 Reject an empty/unknown attack or any scope other than `smoke`, `development`, or `full`. A `full` request is valid only when this invocation itself is the explicitly authorized full task. Load `attack-execution`, follow `AGENTS.md` and the matching entry in `OPENCODE_LUNA.md`, then handle only this task.
 
