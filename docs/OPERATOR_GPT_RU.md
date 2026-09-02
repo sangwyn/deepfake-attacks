@@ -127,7 +127,7 @@ cd /home/aiattacks/oleg/aadd-attack-pipeline && opencode run --command attack --
 **Вся кампания:**
 
 ```bash
-cd /home/aiattacks/oleg/aadd-attack-pipeline && tmux new-session -d -s campaign -c "$PWD" ".venv/bin/python scripts/run_campaign.py development 2>&1 | tee -a .campaign/driver.log"
+cd /home/aiattacks/oleg/aadd-attack-pipeline && mkdir -p .campaign && tmux new-session -d -s campaign -c "$PWD" ".venv/bin/python scripts/run_campaign.py development 2>&1 | tee -a .campaign/driver.log"
 ```
 
 Посмотреть план, ничего не запуская:
@@ -224,6 +224,7 @@ cd /home/aiattacks/oleg/aadd-attack-pipeline && python3 -m json.tool tracking/ru
 | `Expected a project-relative path` | путь должен быть относительным от корня репозитория |
 | Задача сразу `failed`, `Invalid status JSON` | агент нарушил контракт статуса, смотреть `agent.log` рядом со статусом |
 | Задание долго `queued` | нормально: нужно три подряд наблюдения с достаточной свободной памятью |
+| tmux-сессия умирает мгновенно, лог не создан | `tee` не может писать в несуществующий каталог; `mkdir -p .campaign` перед запуском |
 | `Heavy artifact directory already exists` | повтор с тем же конфигом; нужен новый `run_dir` |
 | SSH рвётся на `kex_exchange_identification` | сработал лимит частых подключений, подождать 15 минут, не долбить |
 

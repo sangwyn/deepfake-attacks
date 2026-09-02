@@ -105,7 +105,7 @@ opencode run --command attack --dir "$PWD" --model bailian-payg/qwen3.7-plus fgs
 14 задач: регрессия `ifgsm-smoke`, затем шесть атак × (smoke + development) минус пары, которых нет, и финальный отбор. Точный список всегда смотреть через `--dry-run`.
 
 ```bash
-tmux new-session -d -s campaign -c /home/aiattacks/oleg/aadd-attack-pipeline \
+mkdir -p .campaign && tmux new-session -d -s campaign -c /home/aiattacks/oleg/aadd-attack-pipeline \
   ".venv/bin/python scripts/run_campaign.py development 2>&1 | tee -a .campaign/driver.log"
 ```
 
