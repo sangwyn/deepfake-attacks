@@ -21,7 +21,9 @@ YAML configuration (WHAT YOU MUST PROVIDE)
   original_root  : path to orignal Test 
   manifest       : optional immutable JSONL TEST manifest
   attack         : attack module name from the attacks folder
+  attack_params  : optional dict of kwargs forwarded to the attack's attack()
   save_attacked_dir : optional directory for attacked images
+                      (when set, images are scored after save+reload)
   models_dir     : folder containing <model_name>.pth weight files
   source_classifiers : detector names used to generate attacks
   target_classifiers : detector names used to evaluate attacks
@@ -65,7 +67,7 @@ Usage
         - models_dir: with the .pth weight files
         - save_json: where you want the results JSON to be written
   3. Run the evaluation:
-  python AADD_2026_evaluation.py --config AADD_2026_config.yaml
+  python evaluate.py --config configs/AADD_2026_config.yaml
 """
 
 import argparse
@@ -259,6 +261,13 @@ def resolve_experiment_models(cfg: dict) -> tuple[list[str], list[str], list[str
 # MAIN EVALUATION
 # ============================================================================
 
+def predict_np(pack: dict, np_img: np.ndarray, device: torch.device) -> int:
+    """Class prediction of one detector on an H×W×3 uint8 RGB image."""
+    tensor = pack['transform'](Image.fromarray(np_img)).unsqueeze(0).to(device)
+    with torch.no_grad():
+        return int(pack['model'](tensor).argmax(1).item())
+
+
 def evaluate(cfg: dict):
     import lpips
 
@@ -319,6 +328,7 @@ def evaluate(cfg: dict):
             'transform':  transform,
             'clf_weight': float(weight_cfg.get(name, 1.0)),
             'indicators': [],
+            'clean_indicators': [],
             'ssim_vals':  [],
             'lpips_vals': [],
             'eligible':   [],
@@ -369,7 +379,6 @@ def evaluate(cfg: dict):
         o_path = sample['path']
         label = sample['label']
         rel = o_path.relative_to(original_root)
-
         print(f"[IMAGE] {rel}")
 
         img_o = pil_to_np_rgb(o_path)
@@ -401,11 +410,8 @@ def evaluate(cfg: dict):
 
         # SSIM
         try:
-            ssim_val = compute_ssim_rgb(img_o, img_a)
-        except Exception as e:
-            warnings.warn(f"SSIM failed for {rel}: {e}")
-            ssim_val = 0.0
-        print(f"    SSIM : {ssim_val:.4f}")
+            img_o = pil_to_np_rgb(o_path)
+            img_a = attack_fn(img_o, classifiers, device, **attack_params)
 
         # LPIPS
         with torch.no_grad():
@@ -448,8 +454,11 @@ def evaluate(cfg: dict):
             pack['clean_ok'].append(int(clean_ok))
             pack['adv_ok'].append(int(adv_ok))
 
-            contribution = pack['clf_weight'] * sim_weight * indicator
-            pair_contribution += contribution
+            print(f"    SSIM : {ssim_val:.4f}    LPIPS: {lpips_val:.4f}")
+            sim_weight = alpha * ssim_val + (1.0 - alpha) * (1.0 - lpips_val)
+            pair_contribution = 0.0
+            rec = {'path': str(rel), 'ssim': ssim_val, 'lpips': lpips_val,
+                   'linf': linf, 'classifiers': {}}
 
             print(
                 f"    [{name:<22s}]  "
@@ -464,7 +473,27 @@ def evaluate(cfg: dict):
                 'success': bool(success),
             }
 
-        print(f"    Pair total contribution: {pair_contribution:.4f}")
+                contribution = pack['clf_weight'] * sim_weight * indicator
+                pair_contribution += contribution
+                rec['classifiers'][name] = {
+                    'clean':     'Real' if clean_pred == 0 else 'Fake',
+                    'attacked':  'Real' if pred == 0 else 'Fake',
+                    'indicator': indicator,
+                }
+                print(
+                    f"    [{name:<22s}]  "
+                    f"clean={'Real' if clean_pred == 0 else 'Fake'}  "
+                    f"pred={'Real' if pred == 0 else 'Fake'}  "
+                    f"indicator={indicator}  "
+                    f"contribution={contribution:.4f}"
+                )
+
+            print(f"    L_inf: {linf}/255   Pair total contribution: {pair_contribution:.4f}")
+        except Exception as e:
+            warnings.warn(f"[SKIP] {rel}: {e!r}")
+            continue
+
+        per_image.append(rec)
         running_sum += pair_contribution
         total_pairs += 1
         sample_records.append({
