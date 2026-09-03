@@ -8,13 +8,13 @@ save_attacked_dir: null
 
 models_dir: weights/ 
 
-save_json: experiments/results_identity.json
+save_json: experiments/results_ifgsm.json
 
 
 # You can choose one or both of the classifiers at time of evaluation:
 classifiers:                              
   - vit_b_16
-  - densenet121_dct
+  # - densenet121_dct
 
 
 # Leave the settings below unchanged (the evaluation will be based on these, such reported on challenge Website: https://iplab.dmi.unict.it/mfs/acm-aadd-challenge-2026/):
