@@ -1,0 +1,10 @@
+{
+  "epsilon": 0.03137254901960784,
+  "max_linf": 0.03137254901960784,
+  "measurement": "post-save PNG decoded uint8 RGB in [0,1]",
+  "norm": "linf",
+  "quantization_tolerance": 0.003921568628450981,
+  "samples": 100,
+  "schema_version": 1,
+  "violations": 0
+}

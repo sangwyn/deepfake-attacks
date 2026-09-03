@@ -1,0 +1,70 @@
+{
+  "captured_at": "2026-09-03T02:16:35+00:00",
+  "git": {
+    "branch": "codex/aadd-agent-pipeline",
+    "commit": "b9f6ede0f75bbb8190151eaa4e1006bf2efb9ff1",
+    "tracked_diff_sha256": "7219470b4af14fe0b6cdb3bdbd097811ea1230deb28ae7119e69c8abdbd6c633",
+    "tracked_worktree_clean": false
+  },
+  "inputs": {
+    "config": {
+      "path": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/mig-cow-dct-development-attempt-1/attempt-0001/resolved_config.yaml",
+      "sha256": "190f6024a8942d652d6a56d6ea9e47ed45d098cd774f59ddb5b3bd2ede23e5f6"
+    },
+    "manifest": {
+      "path": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/mig-cow-dct-development-attempt-1/attempt-0001/manifest.snapshot.jsonl",
+      "sha256": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff"
+    },
+    "weights": {
+      "densenet121_dct": {
+        "path": "/home/aiattacks/oleg/aadd-attack-assets/weights/densenet121_dct.pth",
+        "sha256": "5bbaf5c5c0e296d5e819a0b401198c73ad69c6bbc8f372579de5ee5c11d5e643"
+      },
+      "lpips_alexnet_backbone": {
+        "path": "/home/aiattacks/.cache/torch/hub/checkpoints/alexnet-owt-7be5be79.pth",
+        "sha256": "7be5be791159472b1fbf3c69796f7cb30dca7ad8466c2df70058c37116cdee02"
+      },
+      "lpips_calibration": {
+        "path": "/home/aiattacks/oleg/aadd-attack-pipeline/.venv/lib/python3.12/site-packages/lpips/weights/v0.1/alex.pth",
+        "sha256": "df73285e35b22355a2df87cdb6b70b343713b667eddbda73e1977e0c860835c0"
+      },
+      "vit_b_16": {
+        "path": "/home/aiattacks/oleg/aadd-attack-assets/weights/vit_b_16.pth",
+        "sha256": "5e9677d88a7af10791001796eb43d0d060fada3758369814d6d7832934758d81"
+      }
+    }
+  },
+  "runtime": {
+    "cuda": {
+      "available": true,
+      "cudnn": 8902,
+      "device_names": [
+        "NVIDIA L40"
+      ],
+      "torch_cuda": "12.1",
+      "visible_device_count": 1
+    },
+    "determinism": {
+      "cublas_workspace_config": ":4096:8",
+      "cudnn_benchmark": false,
+      "cudnn_deterministic": true,
+      "deterministic_algorithms_warn_only": true
+    },
+    "packages": {
+      "Pillow": "11.0.0",
+      "PyYAML": "6.0.2",
+      "jsonschema": "4.23.0",
+      "lpips": "0.1.4",
+      "numpy": "1.26.4",
+      "scikit-image": "0.26.0",
+      "scipy": "1.15.3",
+      "torch": "2.3.0+cu121",
+      "torchvision": "0.18.0+cu121",
+      "tqdm": "4.67.1"
+    },
+    "platform": "Linux-6.8.0-84-generic-x86_64-with-glibc2.39",
+    "python": "3.12.3",
+    "python_executable": "/home/aiattacks/oleg/aadd-attack-pipeline/.venv/bin/python"
+  },
+  "schema_version": 1
+}

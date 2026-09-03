@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "outcome": "passed",
+  "run_dir": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/08-pgd-vit-development-attempt-1/attempt-0001",
+  "schema_version": 1,
+  "verified_at": "2026-09-02T20:42:58+00:00",
+  "verified_files": {
+    "artifacts.json": "574fa92864b54d6968d789581454566b098cb39436705ebdcee994577b3bb254",
+    "manifest.snapshot.jsonl": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff",
+    "norm_audit.json": "b0f5d88cb55d3fe62e6a518c29530b22c1b8b238c0e7310639a66a711ed05684",
+    "per_sample_metrics.jsonl": "fcda5044af043ba75c1c6ceeba528576be013a7c1250a90e3673cabc22e8b26b",
+    "provenance.json": "8d49190c1097901c536727606be963e6e1601a1d4f2c055c24f95c9f70a0acbe",
+    "resolved_config.yaml": "a880fbe2e79e81292d15893d391a98b034d20ee6c77517eebc95739e67cb945e",
+    "resolved_server_config.yaml": "dacd870a4f598a46ed983c80b1d0fdc045bed895cecb164bd7fe50a87459a0f2",
+    "selection.jsonl": "7e7993ce40bc02f8b86b0f038e5ea2d6159033baba025c6c474f093108d15247",
+    "summary.json": "9329b9ac469ba29a57dbc87eee22f5dcbc817205da95d43da1d7909e64616346"
+  }
+}

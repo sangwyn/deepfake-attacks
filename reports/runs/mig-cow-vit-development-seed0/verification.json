@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "outcome": "passed",
+  "run_dir": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/mig-cow-vit-development-attempt-1/attempt-0001",
+  "schema_version": 1,
+  "verified_at": "2026-09-03T02:02:35+00:00",
+  "verified_files": {
+    "artifacts.json": "132d550d6904b7c503bd0986e87d22e0b0243f0fbae8c0e3541c267bb136e90b",
+    "manifest.snapshot.jsonl": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff",
+    "norm_audit.json": "b0f5d88cb55d3fe62e6a518c29530b22c1b8b238c0e7310639a66a711ed05684",
+    "per_sample_metrics.jsonl": "dc8de5eface0e3588c75491126899a0c2de55ead6cc4629b59512d8226aa7c1f",
+    "provenance.json": "78172a88f5b3d8774650bdda7fc9acd6ecb3faa81fba9d438e98ce798050b0e7",
+    "resolved_config.yaml": "9cdb3a16801a81b6edb4f29f4d340974deee2ae2b4791d1e3adfc3cda6862621",
+    "resolved_server_config.yaml": "dacd870a4f598a46ed983c80b1d0fdc045bed895cecb164bd7fe50a87459a0f2",
+    "selection.jsonl": "7e7993ce40bc02f8b86b0f038e5ea2d6159033baba025c6c474f093108d15247",
+    "summary.json": "84026bb2af189940fc14e8c946fda90f01c25d1fdcd36e0c9cbb4a1e92abc82c"
+  }
+}

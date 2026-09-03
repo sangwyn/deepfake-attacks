@@ -231,11 +231,16 @@ __marimo__/
 *.pt
 *.ckpt
 *.safetensors
-runs/
 artifacts/
 generated-images/
+
+# Heavy outputs only. A bare "runs/" here would exclude the directory itself,
+# and git does not descend into an excluded directory, so the re-includes below
+# could never take effect: every summary.json stayed untracked while the
+# comment above claimed the opposite.
 tracking/runs/**/images/
-tracking/runs/**/logs/*.log
+tracking/runs/**/logs/
+reports/runs/**/images/
 
 # Keep placeholders and compact, reviewable experiment records.
 !tracking/runs/**/.gitkeep

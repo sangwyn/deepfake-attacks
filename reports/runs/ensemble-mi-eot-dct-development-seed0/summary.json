@@ -1,0 +1,37 @@
+{
+  "constraint_violations": 0,
+  "created_at": "2026-09-03T01:03:37+00:00",
+  "epsilon": 0.03137254901960784,
+  "experiment_id": "ensemble-mi-eot-dct-development-seed0",
+  "mean_lpips": 0.07667162584140896,
+  "mean_ssim": 0.9484881054186671,
+  "per_model": {
+    "densenet121_dct": {
+      "clean_accuracy_on_selected": 1.0,
+      "denominator": 100,
+      "successes": 24,
+      "targeted_asr_on_source_eligible": 0.24
+    },
+    "vit_b_16": {
+      "clean_accuracy_on_selected": 1.0,
+      "denominator": 100,
+      "successes": 0,
+      "targeted_asr_on_source_eligible": 0.0
+    }
+  },
+  "samples_eligible": 100,
+  "samples_evaluated": 100,
+  "samples_selected": 100,
+  "schema_version": 1,
+  "scope": "development",
+  "seed": 0,
+  "source_model": "densenet121_dct",
+  "target_class": 0,
+  "timing": {
+    "elapsed_seconds": 274.3739731926471,
+    "finished_at": "2026-09-03T01:03:37+00:00",
+    "measurement": "wall-clock run_experiment preparation and evaluation through summary assembly; excludes artifact serialization and final verification",
+    "schema_version": 1,
+    "started_at": "2026-09-03T00:59:02+00:00"
+  }
+}
