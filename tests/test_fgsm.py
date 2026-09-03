@@ -16,21 +16,21 @@ class FgsmSmokeTests(unittest.TestCase):
         values = np.arange(32 * 32 * 3, dtype=np.uint32)
         return (values.reshape(32, 32, 3) % 251).astype(np.uint8)
 
-    def test_vit_source_is_targeted_and_budgeted(self):
-        module, function = load_attack_module("attacks.fgsm", "vit_b_16")
-        self.assertEqual(module.ATTACK_CONTRACT["source_model"], "vit_b_16")
+    def test_dct_source_is_targeted_and_budgeted(self):
+        module, function = load_attack_module("attacks.fgsm", "densenet121_dct")
+        self.assertEqual(module.ATTACK_CONTRACT["source_model"], "densenet121_dct")
         torch.manual_seed(0)
-        model = nn.Sequential(nn.Flatten(), nn.Linear(3 * 224 * 224, 2))
+        model = nn.Sequential(nn.Flatten(), nn.Linear(1 * 128 * 128, 2))
         image = self._image()
         tensor = from_uint8_image(image, torch.device("cpu")).requires_grad_()
         loss = torch.nn.functional.cross_entropy(
-            model(preprocess_for("vit_b_16", tensor)), torch.tensor([0])
+            model(preprocess_for("densenet121_dct", tensor)), torch.tensor([0])
         )
         gradient = torch.autograd.grad(loss, tensor)[0]
         self.assertTrue(bool(torch.isfinite(gradient).all()))
         output = invoke_attack(
-            function, image, {"vit_b_16": {"model": model}}, torch.device("cpu"),
-            "vit_b_16", 0, {"epsilon": 8 / 255}
+            function, image, {"densenet121_dct": {"model": model}}, torch.device("cpu"),
+            "densenet121_dct", 0, {"epsilon": 8 / 255}
         )
         self.assertEqual(output.dtype, np.uint8)
         self.assertEqual(output.shape, image.shape)

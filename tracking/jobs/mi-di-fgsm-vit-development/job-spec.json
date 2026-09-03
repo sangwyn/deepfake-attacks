@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_kind": "attack-experiment",
+  "config_path": "configs/experiments/mi-di-fgsm-vit-development.yaml",
+  "run_dir": "tracking/runs/20260902T194219Z-development-89aeba08/12-mi-di-fgsm-vit-development-attempt-1",
+  "requested_memory_mb": 24000,
+  "timeout_seconds": 14400,
+  "priority": 0,
+  "max_attempts": 1
+}

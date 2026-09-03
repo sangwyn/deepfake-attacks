@@ -13,6 +13,7 @@ from attacklab.preprocessing import (
 
 ATTACK_CONTRACT = {
     "version": 1,
+    "source_model": "densenet121_dct",
     "supported_source_models": ["vit_b_16", "densenet121_dct"],
     "description": "Targeted one-step FGSM in RGB pixel space.",
 }
