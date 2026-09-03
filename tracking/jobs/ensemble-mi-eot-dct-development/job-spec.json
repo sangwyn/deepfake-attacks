@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_kind": "attack-experiment",
+  "config_path": "configs/experiments/ensemble-mi-eot-dct-development.yaml",
+  "run_dir": "tracking/runs/20260902T194219Z-development-89aeba08/18-ensemble-mi-eot-dct-development-attempt-1",
+  "requested_memory_mb": 24000,
+  "timeout_seconds": 28800,
+  "priority": 0,
+  "max_attempts": 1
+}
