@@ -11,7 +11,8 @@ models_dir: /home/aiattacks/oleg/aadd-attack-assets/weights
 save_json: experiments/results_ifgsm.json
 
 
-# You can choose one or both of the classifiers at time of evaluation:
+# Choose classifiers for evaluation. IFGSM currently requires vit_b_16;
+# use attack: identity to smoke-test with only the available DCT checkpoint.
 classifiers:                              
   - vit_b_16
   # - densenet121_dct

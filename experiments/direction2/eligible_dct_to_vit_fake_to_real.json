@@ -1,0 +1,42 @@
+{
+  "final_score": 116.86716201469905,
+  "aggregate": "sum",
+  "alpha": 0.5,
+  "images_evaluated": 100,
+  "per_classifier": {
+    "vit_b_16": {
+      "clf_weight": 1.0,
+      "attack_success": 0.0,
+      "mean_ssim": 0.9601192215826063,
+      "mean_lpips": 0.06355443676933646
+    },
+    "densenet121_dct": {
+      "clf_weight": 1.0,
+      "attack_success": 0.35,
+      "mean_ssim": 0.9601192215826063,
+      "mean_lpips": 0.06355443676933646
+    },
+    "npr": {
+      "clf_weight": 1.0,
+      "attack_success": 0.0,
+      "mean_ssim": 0.9601192215826063,
+      "mean_lpips": 0.06355443676933646
+    },
+    "aide": {
+      "clf_weight": 1.0,
+      "attack_success": 0.88,
+      "mean_ssim": 0.9601192215826063,
+      "mean_lpips": 0.06355443676933646
+    }
+  },
+  "protocol": {
+    "manifest": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction2/celebA_test_clean_manifest_v4.json",
+    "eligible_source": "densenet121_dct",
+    "eligible_target": "vit_b_16",
+    "direction": "fake_to_real",
+    "eligible_count": 100,
+    "conditional_asr": 0.0,
+    "all_sample_target_rate": null,
+    "evaluated_subset_target_rate": 0.0
+  }
+}

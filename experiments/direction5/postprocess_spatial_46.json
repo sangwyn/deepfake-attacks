@@ -1,0 +1,19 @@
+{
+  "images": 46,
+  "attacked_root": "experiments/direction5/attacked_scheduler_spatial_46",
+  "target": "Real",
+  "real_rate": {
+    "vit_b_16": {
+      "clean": 0.8260869565217391,
+      "jpeg75": 0.782608695652174,
+      "resize75": 0.8260869565217391,
+      "blur05": 0.8260869565217391
+    },
+    "densenet121_dct": {
+      "clean": 0.5652173913043478,
+      "jpeg75": 0.4782608695652174,
+      "resize75": 0.4782608695652174,
+      "blur05": 0.43478260869565216
+    }
+  }
+}

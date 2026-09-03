@@ -1,0 +1,102 @@
+[
+  {
+    "root": "/home/aiattacks/dataset/standardized_1024",
+    "images": 200,
+    "detectors": {
+      "vit_b_16": {
+        "n": 200,
+        "accuracy": 0.945,
+        "balanced_accuracy": 0.9450000000000001,
+        "real_recall": 0.89,
+        "fake_recall": 1.0,
+        "real_as_real": 89,
+        "real_as_fake": 11,
+        "fake_as_real": 0,
+        "fake_as_fake": 100
+      },
+      "densenet121_dct": {
+        "n": 200,
+        "accuracy": 0.99,
+        "balanced_accuracy": 0.99,
+        "real_recall": 0.98,
+        "fake_recall": 1.0,
+        "real_as_real": 98,
+        "real_as_fake": 2,
+        "fake_as_real": 0,
+        "fake_as_fake": 100
+      },
+      "npr": {
+        "n": 200,
+        "accuracy": 0.36,
+        "balanced_accuracy": 0.36,
+        "real_recall": 0.35,
+        "fake_recall": 0.37,
+        "real_as_real": 35,
+        "real_as_fake": 65,
+        "fake_as_real": 63,
+        "fake_as_fake": 37
+      },
+      "aide": {
+        "n": 200,
+        "accuracy": 0.35,
+        "balanced_accuracy": 0.35000000000000003,
+        "real_recall": 0.04,
+        "fake_recall": 0.66,
+        "real_as_real": 4,
+        "real_as_fake": 96,
+        "fake_as_real": 34,
+        "fake_as_fake": 66
+      }
+    }
+  },
+  {
+    "root": "/home/aiattacks/dataset/old",
+    "images": 200,
+    "detectors": {
+      "vit_b_16": {
+        "n": 200,
+        "accuracy": 0.555,
+        "balanced_accuracy": 0.555,
+        "real_recall": 0.11,
+        "fake_recall": 1.0,
+        "real_as_real": 11,
+        "real_as_fake": 89,
+        "fake_as_real": 0,
+        "fake_as_fake": 100
+      },
+      "densenet121_dct": {
+        "n": 200,
+        "accuracy": 0.565,
+        "balanced_accuracy": 0.565,
+        "real_recall": 0.13,
+        "fake_recall": 1.0,
+        "real_as_real": 13,
+        "real_as_fake": 87,
+        "fake_as_real": 0,
+        "fake_as_fake": 100
+      },
+      "npr": {
+        "n": 200,
+        "accuracy": 0.375,
+        "balanced_accuracy": 0.375,
+        "real_recall": 0.38,
+        "fake_recall": 0.37,
+        "real_as_real": 38,
+        "real_as_fake": 62,
+        "fake_as_real": 63,
+        "fake_as_fake": 37
+      },
+      "aide": {
+        "n": 200,
+        "accuracy": 0.535,
+        "balanced_accuracy": 0.535,
+        "real_recall": 0.41,
+        "fake_recall": 0.66,
+        "real_as_real": 41,
+        "real_as_fake": 59,
+        "fake_as_real": 34,
+        "fake_as_fake": 66
+      }
+    }
+  }
+]

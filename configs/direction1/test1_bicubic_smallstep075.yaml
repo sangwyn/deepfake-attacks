@@ -1,0 +1,20 @@
+original_root: /home/aiattacks/pengyang/Test/group1/test1
+attack: dual_pgd
+save_attacked_dir: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/test1_attacked_smallstep075
+models_dir: /home/aiattacks/pengyang/deepfake-attacks/weights
+save_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/test1_results_smallstep075.json
+classifiers: [vit_b_16, densenet121_dct]
+dct_log_scale: true
+dct_resize_mode: bicubic
+weights: {vit_b_16: 1.0, densenet121_dct: 1.0}
+aggregate: sum
+device: cuda
+alpha: 0.5
+seed: 0
+epsilon: 0.03137254901960784
+step_size: 0.0029411764705882353
+iterations: 27
+target: 0
+vit_weight: 0.5
+dct_weight: 0.5
+normalize_gradients: true

@@ -1,0 +1,811 @@
+{
+  "images": 100,
+  "method": "universal_plus_residual",
+  "rows": [
+    {
+      "image": "001501_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9567943055968234,
+      "lpips": 0.15669426321983337,
+      "seconds": 1.0078977961093187
+    },
+    {
+      "image": "001502_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9328086641355023,
+      "lpips": 0.15861818194389343,
+      "seconds": 0.31978478468954563
+    },
+    {
+      "image": "001503_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9579931057148526,
+      "lpips": 0.13018329441547394,
+      "seconds": 0.31039884500205517
+    },
+    {
+      "image": "001504_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9464215108049124,
+      "lpips": 0.19805766642093658,
+      "seconds": 0.356804920360446
+    },
+    {
+      "image": "001505_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9499784581780347,
+      "lpips": 0.14502720534801483,
+      "seconds": 0.3810466453433037
+    },
+    {
+      "image": "001506_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9536789084638125,
+      "lpips": 0.17051368951797485,
+      "seconds": 0.33885621279478073
+    },
+    {
+      "image": "001507_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9536445116435192,
+      "lpips": 0.14318254590034485,
+      "seconds": 0.3303893618285656
+    },
+    {
+      "image": "001508_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.936943645697044,
+      "lpips": 0.14705008268356323,
+      "seconds": 0.3600542265921831
+    },
+    {
+      "image": "001509_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.953382972311792,
+      "lpips": 0.13257385790348053,
+      "seconds": 0.3538852818310261
+    },
+    {
+      "image": "001510_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.8741243923114571,
+      "lpips": 0.20751622319221497,
+      "seconds": 0.33809725753962994
+    },
+    {
+      "image": "001511_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9385155621480337,
+      "lpips": 0.23188664019107819,
+      "seconds": 0.3661694899201393
+    },
+    {
+      "image": "001512_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9220681351793939,
+      "lpips": 0.21389752626419067,
+      "seconds": 0.3434327654540539
+    },
+    {
+      "image": "001513_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9538535308096087,
+      "lpips": 0.11316579580307007,
+      "seconds": 0.3241312000900507
+    },
+    {
+      "image": "001514_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.947873611335054,
+      "lpips": 0.15636895596981049,
+      "seconds": 0.41107557713985443
+    },
+    {
+      "image": "001515_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9537141931242684,
+      "lpips": 0.130272775888443,
+      "seconds": 0.36431637592613697
+    },
+    {
+      "image": "001516_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9535687397110665,
+      "lpips": 0.1603163480758667,
+      "seconds": 0.41816642694175243
+    },
+    {
+      "image": "001517_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9675152800078086,
+      "lpips": 0.09003753215074539,
+      "seconds": 0.40453942492604256
+    },
+    {
+      "image": "001518_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9624765370083778,
+      "lpips": 0.09004119038581848,
+      "seconds": 0.39739551208913326
+    },
+    {
+      "image": "001519_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9398927314476758,
+      "lpips": 0.13714328408241272,
+      "seconds": 0.35609170794487
+    },
+    {
+      "image": "001520_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9504364494693983,
+      "lpips": 0.13133907318115234,
+      "seconds": 0.3510945029556751
+    },
+    {
+      "image": "001521_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9521191835005608,
+      "lpips": 0.13841719925403595,
+      "seconds": 0.3511899057775736
+    },
+    {
+      "image": "001522_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9569279768075032,
+      "lpips": 0.1833663284778595,
+      "seconds": 0.3460651598870754
+    },
+    {
+      "image": "001523_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9575199678526656,
+      "lpips": 0.1840352714061737,
+      "seconds": 0.35471205599606037
+    },
+    {
+      "image": "001524_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9460856654032703,
+      "lpips": 0.204336017370224,
+      "seconds": 0.3583257123827934
+    },
+    {
+      "image": "001525_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9433564981804632,
+      "lpips": 0.16963809728622437,
+      "seconds": 0.3632977269589901
+    },
+    {
+      "image": "001526_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9412303331716453,
+      "lpips": 0.1414848417043686,
+      "seconds": 0.3457422386854887
+    },
+    {
+      "image": "001527_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9415441354246957,
+      "lpips": 0.11790475249290466,
+      "seconds": 0.33416091464459896
+    },
+    {
+      "image": "001528_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9489823310952948,
+      "lpips": 0.10846089571714401,
+      "seconds": 0.32608015835285187
+    },
+    {
+      "image": "001529_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9484368541575696,
+      "lpips": 0.16787412762641907,
+      "seconds": 0.3382407408207655
+    },
+    {
+      "image": "001530_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9642768955466186,
+      "lpips": 0.13328953087329865,
+      "seconds": 0.35404757037758827
+    },
+    {
+      "image": "001531_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9623856182730703,
+      "lpips": 0.1454375982284546,
+      "seconds": 0.3671560026705265
+    },
+    {
+      "image": "001532_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9474346224670187,
+      "lpips": 0.13902801275253296,
+      "seconds": 0.3557796962559223
+    },
+    {
+      "image": "001533_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9545809761737166,
+      "lpips": 0.1691717952489853,
+      "seconds": 0.41819288954138756
+    },
+    {
+      "image": "001534_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9607493968576067,
+      "lpips": 0.10720834881067276,
+      "seconds": 0.3379743229597807
+    },
+    {
+      "image": "001535_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9396164116432022,
+      "lpips": 0.2994993031024933,
+      "seconds": 0.37459038756787777
+    },
+    {
+      "image": "001536_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.8716558743523354,
+      "lpips": 0.21716658771038055,
+      "seconds": 0.4034750424325466
+    },
+    {
+      "image": "001537_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9466027759427579,
+      "lpips": 0.11679095029830933,
+      "seconds": 0.35633038356900215
+    },
+    {
+      "image": "001538_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9117053904411084,
+      "lpips": 0.13869459927082062,
+      "seconds": 0.3375860285013914
+    },
+    {
+      "image": "001539_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9032178693176093,
+      "lpips": 0.16889290511608124,
+      "seconds": 0.3284156806766987
+    },
+    {
+      "image": "001540_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9486951574934279,
+      "lpips": 0.1395130455493927,
+      "seconds": 0.40901124104857445
+    },
+    {
+      "image": "001541_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9205449598303775,
+      "lpips": 0.25650107860565186,
+      "seconds": 0.3448824305087328
+    },
+    {
+      "image": "001542_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9382582448347708,
+      "lpips": 0.2793038785457611,
+      "seconds": 0.34723289124667645
+    },
+    {
+      "image": "001543_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9396618704565318,
+      "lpips": 0.20852252840995789,
+      "seconds": 0.34163543954491615
+    },
+    {
+      "image": "001544_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9452021881791945,
+      "lpips": 0.13448625802993774,
+      "seconds": 0.3449823874980211
+    },
+    {
+      "image": "001545_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9190486826972771,
+      "lpips": 0.17693176865577698,
+      "seconds": 0.3520752303302288
+    },
+    {
+      "image": "001546_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9315701253221457,
+      "lpips": 0.25087571144104004,
+      "seconds": 0.37699468433856964
+    },
+    {
+      "image": "001547_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9267255081265006,
+      "lpips": 0.19137851893901825,
+      "seconds": 0.4339860435575247
+    },
+    {
+      "image": "001548_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9170479783739527,
+      "lpips": 0.27313312888145447,
+      "seconds": 0.3346868231892586
+    },
+    {
+      "image": "001549_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9453710813148982,
+      "lpips": 0.16383770108222961,
+      "seconds": 0.3347966577857733
+    },
+    {
+      "image": "001550_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9501649429312131,
+      "lpips": 0.22846537828445435,
+      "seconds": 0.32552028074860573
+    },
+    {
+      "image": "001551_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9442905214728876,
+      "lpips": 0.17680996656417847,
+      "seconds": 0.3476772643625736
+    },
+    {
+      "image": "001552_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9507581430534978,
+      "lpips": 0.152338445186615,
+      "seconds": 0.34895719587802887
+    },
+    {
+      "image": "001553_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9387642443747319,
+      "lpips": 0.22038592398166656,
+      "seconds": 0.34845330379903316
+    },
+    {
+      "image": "001554_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9203750334923116,
+      "lpips": 0.2740404009819031,
+      "seconds": 0.3709933403879404
+    },
+    {
+      "image": "001555_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9596892943990888,
+      "lpips": 0.08158576488494873,
+      "seconds": 0.3669764380902052
+    },
+    {
+      "image": "001556_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9249971240394107,
+      "lpips": 0.17632055282592773,
+      "seconds": 0.35026394948363304
+    },
+    {
+      "image": "001557_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9368198868011007,
+      "lpips": 0.257729709148407,
+      "seconds": 0.40445220097899437
+    },
+    {
+      "image": "001558_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9291976620803585,
+      "lpips": 0.16920459270477295,
+      "seconds": 0.41922182589769363
+    },
+    {
+      "image": "001559_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9293885743494084,
+      "lpips": 0.17637810111045837,
+      "seconds": 0.36624327674508095
+    },
+    {
+      "image": "001560_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9235214928853072,
+      "lpips": 0.2592374086380005,
+      "seconds": 0.3379914928227663
+    },
+    {
+      "image": "001561_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.8994429018625368,
+      "lpips": 0.3465798497200012,
+      "seconds": 0.3215088415890932
+    },
+    {
+      "image": "001562_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.946526006787943,
+      "lpips": 0.24344658851623535,
+      "seconds": 0.3479633443057537
+    },
+    {
+      "image": "001563_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9486968924469384,
+      "lpips": 0.13760174810886383,
+      "seconds": 0.3358735293149948
+    },
+    {
+      "image": "001564_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9406393761438835,
+      "lpips": 0.2552829682826996,
+      "seconds": 0.3516178783029318
+    },
+    {
+      "image": "001565_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9341766926636801,
+      "lpips": 0.15121817588806152,
+      "seconds": 0.3445955887436867
+    },
+    {
+      "image": "001566_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.928039097981427,
+      "lpips": 0.2680986225605011,
+      "seconds": 0.3345291633158922
+    },
+    {
+      "image": "001567_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9257709126991465,
+      "lpips": 0.21078456938266754,
+      "seconds": 0.3360258396714926
+    },
+    {
+      "image": "001568_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9416039362729851,
+      "lpips": 0.224631205201149,
+      "seconds": 0.33360024727880955
+    },
+    {
+      "image": "001569_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9416579552696672,
+      "lpips": 0.21696069836616516,
+      "seconds": 0.3337394557893276
+    },
+    {
+      "image": "001570_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9240678912547152,
+      "lpips": 0.20886139571666718,
+      "seconds": 0.4073637258261442
+    },
+    {
+      "image": "001571_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9243999322587063,
+      "lpips": 0.26854270696640015,
+      "seconds": 0.3315062914043665
+    },
+    {
+      "image": "001572_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9470767617498614,
+      "lpips": 0.16997107863426208,
+      "seconds": 0.40348808839917183
+    },
+    {
+      "image": "001573_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9125866785298941,
+      "lpips": 0.22493739426136017,
+      "seconds": 0.4147749524563551
+    },
+    {
+      "image": "001574_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9220811130946008,
+      "lpips": 0.18334029614925385,
+      "seconds": 0.3932853750884533
+    },
+    {
+      "image": "001575_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9485247038753232,
+      "lpips": 0.13624036312103271,
+      "seconds": 0.3264587000012398
+    },
+    {
+      "image": "001576_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9439556070308349,
+      "lpips": 0.22378337383270264,
+      "seconds": 0.35031461901962757
+    },
+    {
+      "image": "001577_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9448042362974646,
+      "lpips": 0.14341649413108826,
+      "seconds": 0.33537232503294945
+    },
+    {
+      "image": "001578_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.8992670022680721,
+      "lpips": 0.24979862570762634,
+      "seconds": 0.37503430619835854
+    },
+    {
+      "image": "001579_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9343284495475842,
+      "lpips": 0.21063438057899475,
+      "seconds": 0.33700079657137394
+    },
+    {
+      "image": "001580_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9508606874645634,
+      "lpips": 0.19056862592697144,
+      "seconds": 0.40267243422567844
+    },
+    {
+      "image": "001581_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9192365964892558,
+      "lpips": 0.24336203932762146,
+      "seconds": 0.3646606933325529
+    },
+    {
+      "image": "001582_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9233052317645082,
+      "lpips": 0.10561823844909668,
+      "seconds": 0.33329944498836994
+    },
+    {
+      "image": "001583_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9491837746252553,
+      "lpips": 0.2023618519306183,
+      "seconds": 0.33329671435058117
+    },
+    {
+      "image": "001584_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9433012277580296,
+      "lpips": 0.18782374262809753,
+      "seconds": 0.3200220111757517
+    },
+    {
+      "image": "001585_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.912279837223819,
+      "lpips": 0.2828744649887085,
+      "seconds": 0.3596397340297699
+    },
+    {
+      "image": "001586_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.942202317674638,
+      "lpips": 0.15961037576198578,
+      "seconds": 0.367608979344368
+    },
+    {
+      "image": "001587_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9270442104713176,
+      "lpips": 0.18965795636177063,
+      "seconds": 0.3436460867524147
+    },
+    {
+      "image": "001588_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9379660911141648,
+      "lpips": 0.2396899163722992,
+      "seconds": 0.3265048358589411
+    },
+    {
+      "image": "001589_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.909595539260085,
+      "lpips": 0.15785841643810272,
+      "seconds": 0.3389533646404743
+    },
+    {
+      "image": "001590_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9404948316355216,
+      "lpips": 0.2373456060886383,
+      "seconds": 0.33735574781894684
+    },
+    {
+      "image": "001591_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9165701347467009,
+      "lpips": 0.2533016800880432,
+      "seconds": 0.3325699232518673
+    },
+    {
+      "image": "001592_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9348955302326732,
+      "lpips": 0.24978895485401154,
+      "seconds": 0.32371942326426506
+    },
+    {
+      "image": "001593_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9413992207086334,
+      "lpips": 0.16524893045425415,
+      "seconds": 0.3521972242742777
+    },
+    {
+      "image": "001594_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9112067891820671,
+      "lpips": 0.2869620621204376,
+      "seconds": 0.3654316235333681
+    },
+    {
+      "image": "001595_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9463231617589184,
+      "lpips": 0.16629688441753387,
+      "seconds": 0.36920562013983727
+    },
+    {
+      "image": "001596_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9439919348802502,
+      "lpips": 0.15388162434101105,
+      "seconds": 0.3791589494794607
+    },
+    {
+      "image": "001597_1024x1024.png",
+      "vit_real": false,
+      "dct_real": false,
+      "ssim": 0.9390994675590402,
+      "lpips": 0.2586124539375305,
+      "seconds": 0.33145321905612946
+    },
+    {
+      "image": "001598_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9422175670387926,
+      "lpips": 0.1768198311328888,
+      "seconds": 0.31831832230091095
+    },
+    {
+      "image": "001599_1024x1024.png",
+      "vit_real": false,
+      "dct_real": true,
+      "ssim": 0.9310098430791879,
+      "lpips": 0.20651179552078247,
+      "seconds": 0.3383441511541605
+    },
+    {
+      "image": "001600_1024x1024.png",
+      "vit_real": true,
+      "dct_real": true,
+      "ssim": 0.9333880948465773,
+      "lpips": 0.22580350935459137,
+      "seconds": 0.319844126701355
+    }
+  ],
+  "vit_real_rate": 0.16,
+  "dct_real_rate": 0.82,
+  "mean_ssim": 0.9374742497576481,
+  "mean_lpips": 0.18755692653357983,
+  "seconds": 36.16398102976382
+}

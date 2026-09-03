@@ -1,4 +1,8 @@
-# Adversarial Attacks on AI Image Detectors
+# Adversarial Attacks on AI Image Detectors (AADD-2026)
+
+Targeted adversarial attack research against AI-generated-image detectors, studying five distinct attack strategies under a unified evaluation protocol.
+
+> **Disclaimer:** This code is for detector red-teaming and robustness analysis. It is not a claim of effectiveness against hidden detectors, real camera pipelines, or an official AADD-2026 leaderboard score.
 
 This branch adds a reproducible research pipeline and a restricted OpenCode
 control plane around the original AADD evaluator. The original `evaluate.py`

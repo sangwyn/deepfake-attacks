@@ -1,0 +1,10 @@
+{
+  "images": 1354,
+  "universal_checkpoint": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/universal_additive_seed0.pt",
+  "residual_epsilon": 0.00784313725490196,
+  "iterations": 10,
+  "vit_success": 0.1137370753323486,
+  "dct_success": 0.6189069423929099,
+  "mean_ssim": 0.9892175881117665,
+  "mean_lpips": 0.02660898755712399
+}

@@ -1,0 +1,13 @@
+original_root: /home/aiattacks/pengyang/Test/group1/test1
+max_images: 1
+attack: identity
+save_attacked_dir: null
+models_dir: /home/aiattacks/pengyang/deepfake-attacks/weights
+save_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction2/four_detector_identity_smoke.json
+classifiers: [vit_b_16, densenet121_dct, npr, aide]
+dct_log_scale: true
+weights: {vit_b_16: 1.0, densenet121_dct: 1.0, npr: 1.0, aide: 1.0}
+aggregate: sum
+device: cuda
+alpha: 0.5
+seed: 0

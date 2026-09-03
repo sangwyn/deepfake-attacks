@@ -73,6 +73,7 @@ Usage
 import argparse
 import hashlib
 from importlib import import_module
+import inspect
 import json
 import time
 import warnings
@@ -143,7 +144,8 @@ def build_dct_transform(log_scale: bool = True):
     """
     def _transform(pil_img: Image.Image) -> torch.Tensor:
         img = pil_img.convert('L')
-        if max(img.size) > 256:
+        # Always create the 256x256 canvas expected by the checkpoint.
+        if img.size != (256, 256):
             img = img.resize((256, 256), Image.Resampling.LANCZOS)
         w, h  = img.size
         left  = (w - 128) // 2
@@ -162,7 +164,7 @@ def build_spatial_transform(model_name: str) -> T.Compose:
     Standard ImageNet-normalised spatial transform.
     vit_b_16 uses 224×224 (CenterCrop); others use 256×256.
     """
-    if model_name == 'vit_b_16':
+    if model_name in {'vit_b_16', 'npr'}:
         return T.Compose([
             T.Resize((256, 256)),
             T.CenterCrop((224, 224)),
@@ -176,6 +178,45 @@ def build_spatial_transform(model_name: str) -> T.Compose:
         T.Normalize(mean=[0.485, 0.456, 0.406],
                     std=[0.229, 0.224, 0.225]),
     ])
+
+
+def build_aide_transform(model: nn.Module, device: torch.device):
+    """PIL RGB -> the five-branch tensor expected by the AIDE model."""
+    from detectors.aide.adapter import AIDEAdapter
+    adapter = AIDEAdapter(model, device)
+
+    def _transform(pil_img: Image.Image) -> torch.Tensor:
+        image = T.ToTensor()(pil_img).unsqueeze(0).to(device)
+        return adapter(image)[0]
+
+    return _transform
+
+
+class _NPRLogitModel(nn.Module):
+    """Expose the scalar NPR score as [Real, Fake] logits."""
+
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, image):
+        score = self.model(image)
+        # The verified NPR checkpoint produces positive scores for Fake.
+        return torch.cat((-score, score), dim=1)
+
+
+class _AIDELogitModel(nn.Module):
+    """Map the upstream AIDE output ordering to [Real, Fake]."""
+
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, image):
+        logits = self.model(image)
+        # The upstream wrapper maps its second-class probability above 0.5
+        # to Real, so swap the raw output into the shared [Real, Fake] order.
+        return logits[:, [1, 0]]
 
 
 # ============================================================================
@@ -309,9 +350,18 @@ def evaluate(cfg: dict):
             raise FileNotFoundError(
                 f"Weight file for '{name}' not found: {w_path}"
             )
-        transform = (build_dct_transform(log_scale)
-                     if name.endswith('_dct')
-                     else build_spatial_transform(name))
+        raw_model = load_model(name, w_path, device)
+        if name == 'aide':
+            transform = build_aide_transform(raw_model, device)
+            model = _AIDELogitModel(raw_model).eval().to(device)
+        elif name == 'npr':
+            transform = build_spatial_transform(name)
+            model = _NPRLogitModel(raw_model).eval().to(device)
+        else:
+            transform = (build_dct_transform(log_scale)
+                         if name.endswith('_dct')
+                         else build_spatial_transform(name))
+            model = raw_model
 
         print(f"[MODEL] Loading '{name}' from {w_path} …")
         adapter = load_detector(
@@ -337,6 +387,10 @@ def evaluate(cfg: dict):
             'adv_ok':     [],
         }
         print(f"[MODEL] '{name}' ready on {device}\n")
+
+    # Initialize LPIPS only after configuration and checkpoint validation.
+    lpips_fn = lpips.LPIPS(net='alex').to(device)
+    lpips_fn.eval()
 
     print(f"[SETUP] {len(classifiers)} classifier(s) loaded\n")
     for n, p in classifiers.items():
@@ -586,6 +640,23 @@ def evaluate(cfg: dict):
             },
             'samples': sample_records,
         }
+        if manifest_records is not None:
+            report['protocol'] = {
+                'manifest': str(Path(manifest_path).resolve()),
+                'eligible_source': eligible_source,
+                'eligible_target': eligible_target,
+                'direction': direction,
+                'eligible_count': total_pairs,
+                'conditional_asr': float(np.mean(protocol_target_indicators)
+                                         if protocol_target_indicators else 0.0),
+                # The run intentionally attacks only the eligible subset, so
+                # an all-manifest attacked rate is unavailable here.
+                'all_sample_target_rate': None,
+                'evaluated_subset_target_rate': float(
+                    np.mean(protocol_target_indicators)
+                    if protocol_target_indicators else 0.0
+                ),
+            }
         Path(out_json).parent.mkdir(parents=True, exist_ok=True)
         with open(out_json, 'w') as f:
             json.dump(report, f, indent=2)

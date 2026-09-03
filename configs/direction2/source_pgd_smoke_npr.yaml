@@ -1,0 +1,19 @@
+original_root: /home/aiattacks/pengyang/Test/group1/test1
+max_images: 4
+attack: source_pgd
+source: npr
+save_attacked_dir: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction2/source_pgd_smoke_npr
+models_dir: /home/aiattacks/pengyang/deepfake-attacks/weights
+save_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction2/source_pgd_smoke_npr.json
+classifiers: [vit_b_16, densenet121_dct, npr, aide]
+dct_log_scale: true
+dct_resize_mode: bicubic
+weights: {vit_b_16: 1.0, densenet121_dct: 1.0, npr: 1.0, aide: 1.0}
+aggregate: sum
+device: cuda
+alpha: 0.5
+seed: 0
+epsilon: 0.03137254901960784
+step_size: 0.00784313725490196
+iterations: 2
+target: 0
