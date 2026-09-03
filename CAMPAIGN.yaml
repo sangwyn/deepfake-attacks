@@ -133,41 +133,13 @@ profiles:
         needs: [mi-di-fgsm-dct-smoke]
 
       # ~100: 10 шагов на 2 источника и 5 EoT-выборок.
-      - id: ensemble-mi-eot-vit-smoke
-        attack: ensemble-mi-eot
-        scope: smoke
-        source: vit_b_16
-        required: false
-        needs: [mi-di-fgsm-dct-development]
-
-      - id: ensemble-mi-eot-vit-development
-        attack: ensemble-mi-eot
-        scope: development
-        source: vit_b_16
-        required: false
-        needs: [ensemble-mi-eot-vit-smoke]
-
-      - id: ensemble-mi-eot-dct-smoke
-        attack: ensemble-mi-eot
-        scope: smoke
-        source: densenet121_dct
-        required: false
-        needs: [ensemble-mi-eot-vit-development]
-
-      - id: ensemble-mi-eot-dct-development
-        attack: ensemble-mi-eot
-        scope: development
-        source: densenet121_dct
-        required: false
-        needs: [ensemble-mi-eot-dct-smoke]
-
       # ~200: 10 шагов на 20 выборок спектра.
       - id: ssa-vit-smoke
         attack: ssa
         scope: smoke
         source: vit_b_16
         required: true
-        needs: [ensemble-mi-eot-dct-development]
+        needs: [mi-di-fgsm-dct-development]
 
       - id: ssa-vit-development
         attack: ssa
@@ -191,38 +163,10 @@ profiles:
         needs: [ssa-dct-smoke]
 
       # Несколько сотен вычислений.
-      - id: mig-cow-vit-smoke
-        attack: mig-cow
-        scope: smoke
-        source: vit_b_16
-        required: false
-        needs: [ssa-dct-development]
-
-      - id: mig-cow-vit-development
-        attack: mig-cow
-        scope: development
-        source: vit_b_16
-        required: false
-        needs: [mig-cow-vit-smoke]
-
-      - id: mig-cow-dct-smoke
-        attack: mig-cow
-        scope: smoke
-        source: densenet121_dct
-        required: false
-        needs: [mig-cow-vit-development]
-
-      - id: mig-cow-dct-development
-        attack: mig-cow
-        scope: development
-        source: densenet121_dct
-        required: false
-        needs: [mig-cow-dct-smoke]
-
       - id: select-finalists
         kind: review
         required: true
-        needs: [mig-cow-dct-development]
+        needs: [ssa-dct-development]
   full:
     description: Replication, budget sensitivity, full-data, and official runs for frozen finalists.
     source_profile: development
