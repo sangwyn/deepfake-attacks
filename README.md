@@ -56,6 +56,9 @@ python3 scripts/run_campaign.py --help
 
 `docs/OPERATOR_GPT_RU.md` is the full operator instruction: update, launch,
 monitor, read results, recover, and add an attack.
+`docs/MAINTAINER_HANDOFF_RU.md` is for whoever debugs the code: the invariants
+that must not be weakened, the decisions that look wrong but are deliberate,
+what the system does not have, and the failure history.
 `docs/AGENT_QUICKSTART_RU.md` is the short operating guide: start the
 scheduler, give an agent a task, check progress, read results. See
 `docs/SCIENTIFIC_PIPELINE.md`, `docs/AGENT_PIPELINE.md`, and
