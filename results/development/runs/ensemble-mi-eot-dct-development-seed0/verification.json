@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "outcome": "passed",
+  "run_dir": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/18-ensemble-mi-eot-dct-development-attempt-1/attempt-0001",
+  "schema_version": 1,
+  "verified_at": "2026-09-03T01:03:39+00:00",
+  "verified_files": {
+    "artifacts.json": "15e7b109589bd5014d424deb56d41980916b91065786b04447279c4b7b0494fb",
+    "manifest.snapshot.jsonl": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff",
+    "norm_audit.json": "b0f5d88cb55d3fe62e6a518c29530b22c1b8b238c0e7310639a66a711ed05684",
+    "per_sample_metrics.jsonl": "9c2a31c12ad7e23d717a3f7af42569188dbca98c05e6fa06c0d1cd8b7858afea",
+    "provenance.json": "c4c05b0c6808fdb97663428f30d3f2f8b81e0d92efd556c542c84fa8abeb075a",
+    "resolved_config.yaml": "c3ba036a3c4f7657f1b0dfbc4202470e40fb2967c49e217173df72682b8da8e6",
+    "resolved_server_config.yaml": "dacd870a4f598a46ed983c80b1d0fdc045bed895cecb164bd7fe50a87459a0f2",
+    "selection.jsonl": "7e7993ce40bc02f8b86b0f038e5ea2d6159033baba025c6c474f093108d15247",
+    "summary.json": "61a5b25539936ededcb89134fb2b574ac59c17ba64617d97b145359f100a9ac6"
+  }
+}

@@ -1,0 +1,35 @@
+# Paths are resolved relative to this file.
+original_root: ../data/TEST
+manifest: ../manifests/celebA/test_fake.jsonl
+models_dir: ../weights
+save_attacked_dir: ../outputs/attacked
+save_json: ../outputs/results.json
+
+attack: isp_pgd
+objective: targeted_fake_to_real
+include_labels: [1]
+source_classifiers: [vit_b_16, densenet121_dct]
+target_classifiers: [vit_b_16, densenet121_dct, npr, aide]
+attack_params:
+  epsilon: 0.03137254901960784  # 8/255
+  step_size: 0.00196078431372549  # 0.5/255
+  iterations: 40
+  source_weights:
+    vit_b_16: 0.5
+    densenet121_dct: 0.5
+  isp_prior_weight: 0.05
+  isp_prior_scale: 1.0
+  isp_texture_mask: true
+  isp_mask_floor: 0.25
+
+device: auto
+metric_device: cpu
+seed: 0
+dct_log_scale: true
+weights:
+  vit_b_16: 1.0
+  densenet121_dct: 1.0
+  npr: 1.0
+  aide: 1.0
+aggregate: sum
+alpha: 0.5

@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "outcome": "passed",
+  "run_dir": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/12-mi-di-fgsm-vit-development-attempt-2/attempt-0001",
+  "schema_version": 1,
+  "verified_at": "2026-09-03T00:33:24+00:00",
+  "verified_files": {
+    "artifacts.json": "36f31803489c0d6d2ac3552a85b317d8ac8f25d776bf4c69edec7d8e65237ee7",
+    "manifest.snapshot.jsonl": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff",
+    "norm_audit.json": "b0f5d88cb55d3fe62e6a518c29530b22c1b8b238c0e7310639a66a711ed05684",
+    "per_sample_metrics.jsonl": "cffc4f75c16dfe9c6169449aa6de0ed83acb8584266b3157a134fe1f0d981d99",
+    "provenance.json": "d6ba015eb7c21937f389cb5b69b19e2baf4ebb4f549872fa9ea49d193ad95cd0",
+    "resolved_config.yaml": "3bc2aa76cfd40db30cbe1c4cc5209ee9ead3d261356d3daa1ea84900e33cd77b",
+    "resolved_server_config.yaml": "dacd870a4f598a46ed983c80b1d0fdc045bed895cecb164bd7fe50a87459a0f2",
+    "selection.jsonl": "7e7993ce40bc02f8b86b0f038e5ea2d6159033baba025c6c474f093108d15247",
+    "summary.json": "8952257a8af4c0893a8f2dae5771110d894e5daf741ef37999dfa5af9cd44604"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "created_at": "2026-09-02T10:08:17+00:00",
+  "dataset_root_recorded_for_audit": "/home/aiattacks/dataset/celebA/TEST",
+  "entries": [
+    {
+      "class_name": "TEST_FAKE",
+      "count": 100,
+      "label": 1,
+      "manifest": "test_fake.jsonl",
+      "manifest_sha256": "cf66f11ae26a5621a5e1287797f292016c5e362f7ccda6198e3abfdac4349f09"
+    },
+    {
+      "class_name": "TEST_REAL",
+      "count": 100,
+      "label": 0,
+      "manifest": "test_real.jsonl",
+      "manifest_sha256": "b9c7d063b4e6a2f06d65c689502ba405bd293a0817facfa9beeaa5734c3acadc"
+    }
+  ],
+  "schema_version": 1,
+  "total_count": 200
+}

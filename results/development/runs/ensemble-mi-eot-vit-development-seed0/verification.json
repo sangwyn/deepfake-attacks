@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "outcome": "passed",
+  "run_dir": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/16-ensemble-mi-eot-vit-development-attempt-1/attempt-0001",
+  "schema_version": 1,
+  "verified_at": "2026-09-03T00:53:39+00:00",
+  "verified_files": {
+    "artifacts.json": "13320d2b659c9566d866ad978ab7ed72e7b4ee4ab333c8f2af939700a97492fb",
+    "manifest.snapshot.jsonl": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff",
+    "norm_audit.json": "b0f5d88cb55d3fe62e6a518c29530b22c1b8b238c0e7310639a66a711ed05684",
+    "per_sample_metrics.jsonl": "38a95cabbe89b73da1f889c665cea01450a7a554a1dc2e6202914915f8dc76ba",
+    "provenance.json": "c12e5145c38a851ff4b3e2f2e08337cb49e660648b2c63bf6e6376dd4bc829c6",
+    "resolved_config.yaml": "abba73c333855e64993398f8da8b4fca6e57ebffb379788a56132529f3302d7b",
+    "resolved_server_config.yaml": "dacd870a4f598a46ed983c80b1d0fdc045bed895cecb164bd7fe50a87459a0f2",
+    "selection.jsonl": "7e7993ce40bc02f8b86b0f038e5ea2d6159033baba025c6c474f093108d15247",
+    "summary.json": "69224de05ebffcebcf6689675e4d248adb4fd91b120ab3df901f78ae69994a89"
+  }
+}

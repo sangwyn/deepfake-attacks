@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "outcome": "passed",
+  "run_dir": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/ssa-vit-development-attempt-1/attempt-0001",
+  "schema_version": 1,
+  "verified_at": "2026-09-03T01:20:54+00:00",
+  "verified_files": {
+    "artifacts.json": "2a345f10dc329f22ceeb7877093325b6069c9a31f9b5a98cedde5069f2eb4e71",
+    "manifest.snapshot.jsonl": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff",
+    "norm_audit.json": "b0f5d88cb55d3fe62e6a518c29530b22c1b8b238c0e7310639a66a711ed05684",
+    "per_sample_metrics.jsonl": "3263ea539792279666fd2ecef4d52cdb86e98fe1454630da5157f9ae55256453",
+    "provenance.json": "4182c66c65b65bb18da0a6389fff88fb0372da8d2a061b438121f88049efd55e",
+    "resolved_config.yaml": "cd090c0414694c2c6ecde0cf4222bc8c5cbbc6f4740f60f8d013af3e581c54d7",
+    "resolved_server_config.yaml": "dacd870a4f598a46ed983c80b1d0fdc045bed895cecb164bd7fe50a87459a0f2",
+    "selection.jsonl": "7e7993ce40bc02f8b86b0f038e5ea2d6159033baba025c6c474f093108d15247",
+    "summary.json": "7bc24b35819ef108ce97dc128536f11624b759ddfa81e3d887377667283fb228"
+  }
+}
