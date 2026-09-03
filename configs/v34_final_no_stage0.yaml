@@ -1,0 +1,18 @@
+# ViDA v3.4-final-no-stage0 — formal run on the Yang database (celebA TEST).
+# Every image goes through the full attack pipeline (no clean-skip / no
+# clean-prediction shortcut). Unchanged official evaluate.py.
+original_root: /home/aiattacks/dataset/celebA/TEST
+attack: vida
+save_attacked_dir: null
+models_dir: weights
+save_json: experiments/yang_comparison/vida_v34_final_no_stage0.json
+classifiers:
+  - vit_b_16
+  - densenet121_dct
+dct_log_scale: true
+weights:
+  vit_b_16: 1.0
+  densenet121_dct: 1.0
+aggregate: sum
+device: cuda
+alpha: 0.5

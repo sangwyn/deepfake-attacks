@@ -4,31 +4,33 @@ A white-box targeted attack for AADD-2026 against the two detectors
 (``vit_b_16`` spatial and ``densenet121_dct`` frequency). It matches the
 team template ``attack(image, classifiers, device)`` used by ``evaluate.py``.
 
+Version: ViDA v3.4-final-no-stage0. EVERY image goes through the full attack
+pipeline — there is no clean-skip and no clean-prediction shortcut.
+
 Pipeline (research details in docs/PLAN.md):
   * Differentiable replicas of BOTH detector preprocessing paths, so white-box
     gradients flow end to end. The DCT log(|-|) uses a magnitude-capped custom
     backward (forward stays identical to the evaluator) to avoid gradient
     explosion on near-zero high-frequency coefficients.
-  * Stage 0 (clean skip): if every detector already predicts the target on the
-    untouched image, return it unchanged (SSIM=1, LPIPS=0 -> free Q=1; real
-    images cost nothing).
   * Stage A (acquisition): MI-FGSM over the SUM of both detectors' targeted
     margin losses, with a border mask (pixels neither detector sees are never
     perturbed). Stops as soon as every available detector is fooled, then runs
     a short "tail" of extra joint steps for hard images.
-  * Stage A.5 (line search): binary search the smallest perturbation scale that
+  * Stage B (line search): binary search the smallest perturbation scale that
     still fools every detector, gated by the evaluator-EXACT uint8 prediction
     (PIL transforms + rounding included). Strips redundant magnitude.
-  * Stage B (quality recovery): Adam on the continuous perturbation maximises
+  * Stage C (quality recovery): Adam on the continuous perturbation maximises
     perceptual quality (differentiable SSIM + LPIPS-Alex, the exact metric the
-    evaluator uses) with a soft margin buffer; a step is accepted only if the
-    evaluator-exact uint8 check still passes for every already-fooled detector.
-  * Stage C (verify + re-attack): re-run the official transforms on the rounded
-    image; any detector that slipped gets extra MI-FGSM steps.
-  * Stage D (rescue passes): images still below Q threshold (or not fully
-    fooled) get additional passes with finer/different acquisition steps and
-    random PGD starts; the best image across all passes (most detectors fooled,
-    then highest Q) is returned.
+    evaluator uses) with a soft margin buffer annealed over phases; a step is
+    accepted only if the evaluator-exact uint8 check still passes for every
+    already-fooled detector. Phases reset momentum and re-run Stage B.
+  * Stage D (uint8 verification): re-run the official transforms on the
+    rounded image; any detector that slipped gets extra MI-FGSM steps. The best
+    uint8 image (detectors fooled, then Q) seen anywhere is always kept.
+  * Stage E (hard-case rescue): images that still end below the Q threshold
+    (or not fully fooled) get additional passes with finer/different
+    acquisition steps, random PGD starts and per-pass Diverse-Inputs; the best
+    image across all passes is returned (multi-start / best-of-k).
 
 LPIPS/SSIM models are cached globally (one load per process).
 
@@ -58,13 +60,13 @@ KAPPA = 0.5
 REC_LR = 0.4 / 255.0
 KAPPA_REC = 1.0
 LAMBDA_REC = 3.0
-# Stage A.5: binary line search on the perturbation scale (uint8-gated).
+# Stage B: binary line search on the perturbation scale (uint8-gated).
 LINESEARCH_ITERS = 12
-# Stage C: re-run the official transforms on the rounded image; any detector
+# Stage D: re-run the official transforms on the rounded image; any detector
 # that slipped gets extra MI-FGSM steps.
 VERIFY_ROUNDS = 3
 REATTACK_STEPS = 20
-# Stage D (rescue passes): images that end pass 1 with Q below RESCUE_Q (or with
+# Stage E (rescue passes): images that end pass 1 with Q below RESCUE_Q (or with
 # a detector still not fooled) get extra passes with different (step size,
 # random-start) configurations. The uint8 accept gate sits right at the
 # decision boundary, so the recovery trajectory is chaotic run-to-run — cheap
@@ -320,9 +322,9 @@ def attack(image, classifiers, device,
     names = list(branches)
     x = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0).float().to(device) / 255.0
 
-    # ---- Stage 0: clean skip — already passes every detector untouched ----
-    if not _gt_bad(image, classifiers, names, device, target):
-        return image
+    # NOTE (v3.4-final-no-stage0): every image goes through the full attack
+    # pipeline. There is deliberately NO clean-skip / no prediction shortcut:
+    # we never inspect the clean prediction to decide whether to attack.
 
     # border mask: forbid perturbation outside every detector's field of view.
     # ViT sees the central 224 of the 256 canonical grid; zero the outer ring.
@@ -378,6 +380,7 @@ def attack(image, classifiers, device,
         acquisition. Both diversify trajectories across rescue passes."""
         pass_cfg["di"] = di if di > 0 else DI_PROB
         # ---- Stage A: MI-FGSM acquisition + early stop ----
+        # (both detectors' targeted margin losses, border mask, momentum)
         if rand_start > 0.0:
             delta = (torch.rand_like(x) * 2.0 - 1.0) * rand_start
             delta = (delta * allow).clamp(-epsilon, epsilon).detach()
@@ -395,7 +398,7 @@ def attack(image, classifiers, device,
             if float_fooled(delta):
                 break
 
-        # ---- Stage A.2: tail — extra steps for hard images ----
+        # ---- Stage A tail: extra steps for images any detector misses ----
         for _ in range(tail_steps):
             if float_fooled(delta):
                 break
@@ -408,7 +411,7 @@ def attack(image, classifiers, device,
                 delta = delta.clamp(-epsilon, epsilon)
         delta = delta.detach()
 
-        # ---- Stage A.5: binary line search on perturbation scale ----
+        # ---- Stage B: binary line search on perturbation scale ----
         # Invariant: scale hi passes the ground-truth gate, lo fails. Keep hi.
         if not _gt_bad(_uint8_hwc(x, delta), classifiers, names, device, target):
             remember(delta)
@@ -424,7 +427,7 @@ def attack(image, classifiers, device,
                 delta = delta * hi
             remember(delta)
 
-        # ---- Stage B: Adam recovery (evaluator-exact uint8 accept gate) ----
+        # ---- Stage C: Adam quality recovery (evaluator-exact uint8 gate) --
         # Adaptive phases: fresh-momentum Adam + binary line search each phase.
         # kappa anneals 1.0 -> 0.1 so fooled margins hug the decision boundary
         # (the uint8 gate is the real safety net); Adam lr shrinks late for
@@ -500,7 +503,7 @@ def attack(image, classifiers, device,
                     stale = 0
             delta = delta.detach()
 
-        # ---- Stage C: uint8 verification + re-attack on slippage ----
+        # ---- Stage D: uint8 verification + re-attack on slippage ----
         for _ in range(VERIFY_ROUNDS):
             remember(delta)
             if not _gt_bad(_uint8_hwc(x, delta), classifiers, names,
@@ -520,11 +523,12 @@ def attack(image, classifiers, device,
                     break
             remember(delta)
 
-    # Pass 1: default fast configuration (zero start).
+    # Main pass (Stages A->D), zero start.
     run_pass()
-    # Rescue passes: while the image is still imperfect (any detector not
-    # fooled, or Q below RESCUE_Q), re-run with different step/random-start
-    # configurations. Smaller L∞ steps trace a shorter path to the decision
+    # Stage E — hard-case rescue (multi-start / best-of-k): while the image
+    # is still imperfect (any detector not fooled, or Q below RESCUE_Q),
+    # re-run with different step sizes, random PGD starts and per-pass
+    # Diverse-Inputs. Smaller L∞ steps trace a shorter path to the decision
     # boundary; random starts diversify the recovery trajectory (the
     # near-boundary uint8 gate is chaotic run-to-run). remember() keeps the
     # best image across all passes.
