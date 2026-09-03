@@ -9,14 +9,28 @@ Pipeline (research details in docs/PLAN.md):
     gradients flow end to end. The DCT log(|-|) uses a magnitude-capped custom
     backward (forward stays identical to the evaluator) to avoid gradient
     explosion on near-zero high-frequency coefficients.
+  * Stage 0 (clean skip): if every detector already predicts the target on the
+    untouched image, return it unchanged (SSIM=1, LPIPS=0 -> free Q=1; real
+    images cost nothing).
   * Stage A (acquisition): MI-FGSM over the SUM of both detectors' targeted
     margin losses, with a border mask (pixels neither detector sees are never
     perturbed). Stops as soon as every available detector is fooled, then runs
     a short "tail" of extra joint steps for hard images.
-  * Stage B (quality recovery): freeze the fooling margins and maximise
+  * Stage A.5 (line search): binary search the smallest perturbation scale that
+    still fools every detector, gated by the evaluator-EXACT uint8 prediction
+    (PIL transforms + rounding included). Strips redundant magnitude.
+  * Stage B (quality recovery): Adam on the continuous perturbation maximises
     perceptual quality (differentiable SSIM + LPIPS-Alex, the exact metric the
-    evaluator uses), accepting a step only if it never loses an already-fooled
-    detector. This is the main score driver for the LPIPS-weighted 2026 score.
+    evaluator uses) with a soft margin buffer; a step is accepted only if the
+    evaluator-exact uint8 check still passes for every already-fooled detector.
+  * Stage C (verify + re-attack): re-run the official transforms on the rounded
+    image; any detector that slipped gets extra MI-FGSM steps.
+  * Stage D (rescue pass): images still below Q threshold (or not fully fooled)
+    get a second pass with a finer acquisition step and more iterations; the
+    best image across passes (most detectors fooled, then highest Q) is
+    returned.
+
+LPIPS/SSIM models are cached globally (one load per process).
 
 Hyper-parameters are module-level constants (edit to taste). Returns a
 same-size HWC uint8 RGB adversarial image.
@@ -30,16 +44,33 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms.functional as TF
+from PIL import Image
 
 EPS = 8.0 / 255.0
 STEP = 2.0 / 255.0
 STEPS = 80
 TAIL_STEPS = 60
-REC_STEPS = 40
-REC_STEP = 0.5 / 255.0
+REC_STEPS = 50
 MU = 1.0
 KAPPA = 0.5
-LAMBDA_Q = 2.0
+# Quality-recovery (Stage B): Adam on the continuous perturbation, maximising
+# 0.5*SSIM + 0.5*(1-LPIPS) with a soft margin buffer on fooled detectors.
+REC_LR = 0.4 / 255.0
+KAPPA_REC = 1.0
+LAMBDA_REC = 3.0
+# Stage A.5: binary line search on the perturbation scale (uint8-gated).
+LINESEARCH_ITERS = 12
+# Stage C: re-run the official transforms on the rounded image; any detector
+# that slipped gets extra MI-FGSM steps.
+VERIFY_ROUNDS = 3
+REATTACK_STEPS = 20
+# Stage D (rescue pass): images that end pass 1 with Q below RESCUE_Q (or with
+# a detector still not fooled) get a fresh pass with a finer acquisition step
+# and more iterations; the best image across passes is returned.
+RESCUE_Q = 0.90
+RESCUE_STEP = 1.0 / 255.0
+RESCUE_STEPS = 160
+RESCUE_TAIL = 80
 # Input-diversity (DI, Xie et al.) for black-box transfer. Off by default
 # (it slightly lowers white-box fooling); set DI_PROB > 0 to randomly
 # resize+pad the input during acquisition, which boosts cross-model transfer.
@@ -209,6 +240,52 @@ def _di(x, prob=DI_PROB, lo=DI_SCALE_LO, hi=1.0):
 
 
 # --------------------------------------------------------------------------- #
+# Quality-model cache + evaluator-exact (ground-truth) helpers
+# --------------------------------------------------------------------------- #
+_QCACHE = {}
+
+
+def _get_qmodels(device):
+    """LPIPS-Alex + differentiable SSIM are loaded ONCE per process/device and
+    reused across images (the evaluator scores hundreds of images; reloading
+    the AlexNet weights per image is pure waste)."""
+    key = str(device)
+    if key not in _QCACHE:
+        import lpips
+        lp = lpips.LPIPS(net="alex").to(device).eval()
+        for p in lp.parameters():
+            p.requires_grad_(False)
+        _QCACHE[key] = (lp, DiffSSIM().to(device))
+    return _QCACHE[key]
+
+
+def _uint8_hwc(x, d):
+    """(x + d), clipped and rounded -> HWC uint8 numpy. This is exactly what
+    the evaluator saves and scores, so all gates use it."""
+    with torch.no_grad():
+        u = ((x + d).clamp(0.0, 1.0)[0].permute(1, 2, 0) * 255.0)
+    return u.round().to(torch.uint8).cpu().numpy()
+
+
+def _gt_bad(u_img, classifiers, names, device, target):
+    """Run the evaluator's EXACT transforms + models on a uint8 HWC image and
+    return the names of detectors that do NOT predict `target`. Ground-truth
+    gate: PIL resize/crop, scipy DCT and uint8 rounding are all included."""
+    pil = Image.fromarray(u_img)
+    bad = []
+    for n in names:
+        pack = classifiers.get(n)
+        if pack is None or pack.get("transform") is None:
+            continue
+        with torch.no_grad():
+            t = pack["transform"](pil).unsqueeze(0).to(device)
+            pred = int(pack["model"](t).argmax(1).item())
+        if pred != target:
+            bad.append(n)
+    return bad
+
+
+# --------------------------------------------------------------------------- #
 # Main entry point (team template)
 # --------------------------------------------------------------------------- #
 def attack(image, classifiers, device,
@@ -230,7 +307,12 @@ def attack(image, classifiers, device,
             p.requires_grad_(False)
         b.eval()
 
+    names = list(branches)
     x = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0).float().to(device) / 255.0
+
+    # ---- Stage 0: clean skip — already passes every detector untouched ----
+    if not _gt_bad(image, classifiers, names, device, target):
+        return image
 
     # border mask: forbid perturbation outside every detector's field of view.
     # ViT sees the central 224 of the 256 canonical grid; zero the outer ring.
@@ -241,6 +323,10 @@ def attack(image, classifiers, device,
     m256[:, :, :, -16:] = 0.0
     allow = F.interpolate(m256, size=x.shape[-2:], mode="nearest")
 
+    lpips_fn, ssim_fn = _get_qmodels(device)
+    base = (x * 2 - 1).detach()
+    best_u, best_key = None, (-1, -1.0)
+
     def adv_of(d):
         return (x + d).clamp(0.0, 1.0)
 
@@ -248,79 +334,177 @@ def attack(image, classifiers, device,
         adv = _di(adv_of(d)) if DI_PROB > 0 else adv_of(d)
         return sum(_margin_loss(b(adv), target) for b in branches.values())
 
-    def fooled_count(d):
-        return sum(1 for b in branches.values() if _margin(b, adv_of(d), target) < 0)
+    def float_fooled(d):
+        adv = adv_of(d)
+        return all(_margin(b, adv, target) < 0 for b in branches.values())
 
-    n_br = len(branches)
-
-    # ---- Stage A: MI-FGSM acquisition + early stop ----
-    delta = torch.zeros_like(x)
-    acc = torch.zeros_like(x)
-    total = steps
-    for it in range(steps):
-        delta = delta.detach().requires_grad_(True)
-        g = torch.autograd.grad(loss_on(delta), delta)[0]
-        g = g / (g.abs().mean() + 1e-12)
-        acc = MU * acc + g
+    def q_of(d):
         with torch.no_grad():
-            delta = (delta - step * acc.sign()) * allow
-            delta = delta.clamp(-epsilon, epsilon)
-        if fooled_count(delta) == n_br:
-            total = it + 1
-            break
+            adv = adv_of(d)
+            q_s = ssim_fn(x, adv)
+            q_l = lpips_fn(base, adv * 2 - 1).mean()
+        return float((0.5 * q_s + 0.5 * (1.0 - q_l)).item())
 
-    # ---- Stage A.2: tail — keep pushing on images any detector still misses ----
-    for _ in range(tail_steps):
-        if fooled_count(delta) == n_br:
-            break
-        delta = delta.detach().requires_grad_(True)
-        g = torch.autograd.grad(loss_on(delta), delta)[0]
-        g = g / (g.abs().mean() + 1e-12)
-        acc = MU * acc + g
-        with torch.no_grad():
-            delta = (delta.detach() - step * acc.sign()) * allow
-            delta = delta.clamp(-epsilon, epsilon)
-            total += 1
+    def remember(d):
+        """Keep the best uint8 image seen: first maximise detectors fooled,
+        then perceptual quality Q."""
+        nonlocal best_u, best_key
+        u = _uint8_hwc(x, d)
+        n_good = len(names) - len(_gt_bad(u, classifiers, names, device, target))
+        key = (n_good, q_of(d))
+        if key > best_key:
+            best_key, best_u = key, u
+        return u
 
-    # ---- Stage B: quality recovery (never lose an already-fooled detector) ----
-    locks = [_margin(b, adv_of(delta), target) < 0 for b in branches.values()]
-    if any(locks):
-        try:
-            import lpips
-            lpips_fn = lpips.LPIPS(net="alex").to(device).eval()
-            for p in lpips_fn.parameters():
-                p.requires_grad_(False)
-            has_lpips = True
-        except Exception:
-            has_lpips = False
-        diff_ssim = DiffSSIM().to(device)
-        base = (x * 2 - 1).detach()
-
-        def holds(d):
-            ok = True
-            for b, locked in zip(branches.values(), locks):
-                if locked:
-                    ok = ok and (_margin(b, adv_of(d), target) < 0)
-            return ok
-
-        best_q, best_d = -1.0, delta.clone()
-        for _ in range(rec_steps):
+    def run_pass(step=STEP, steps=STEPS, tail_steps=TAIL_STEPS):
+        """One full acquisition -> line search -> Adam recovery -> verify
+        cycle, updating the global best (best_u/best_key via remember)."""
+        # ---- Stage A: MI-FGSM acquisition + early stop ----
+        delta = torch.zeros_like(x)
+        acc = torch.zeros_like(x)
+        for it in range(steps):
             delta = delta.detach().requires_grad_(True)
-            adv = adv_of(delta)
-            q_s = diff_ssim(x, adv)
-            q_l = lpips_fn(base, adv * 2 - 1).mean() if has_lpips else torch.zeros((), device=device)
-            q = 0.5 * q_s + 0.5 * (1.0 - q_l) if has_lpips else q_s
-            margin_term = sum(_margin_loss(b(adv), target) for b in branches.values())
-            loss = margin_term + LAMBDA_Q * (1.0 - q)
-            g = torch.autograd.grad(loss, delta)[0]
+            g = torch.autograd.grad(loss_on(delta), delta)[0]
+            g = g / (g.abs().mean() + 1e-12)
+            acc = MU * acc + g
             with torch.no_grad():
-                cand = (delta - REC_STEP * g.sign()).clamp(-epsilon, epsilon)
-                if holds(cand):
-                    delta = cand
-                    if float(q.item()) > best_q:
-                        best_q, best_d = float(q.item()), cand.clone()
-        delta = best_d
+                delta = (delta - step * acc.sign()) * allow
+                delta = delta.clamp(-epsilon, epsilon)
+            if float_fooled(delta):
+                break
 
-    with torch.no_grad():
-        out = (x + delta).clamp(0.0, 1.0)[0].permute(1, 2, 0) * 255.0
-    return out.round().to(torch.uint8).cpu().numpy()
+        # ---- Stage A.2: tail — extra steps for hard images ----
+        for _ in range(tail_steps):
+            if float_fooled(delta):
+                break
+            delta = delta.detach().requires_grad_(True)
+            g = torch.autograd.grad(loss_on(delta), delta)[0]
+            g = g / (g.abs().mean() + 1e-12)
+            acc = MU * acc + g
+            with torch.no_grad():
+                delta = (delta.detach() - step * acc.sign()) * allow
+                delta = delta.clamp(-epsilon, epsilon)
+        delta = delta.detach()
+
+        # ---- Stage A.5: binary line search on perturbation scale ----
+        # Invariant: scale hi passes the ground-truth gate, lo fails. Keep hi.
+        if not _gt_bad(_uint8_hwc(x, delta), classifiers, names, device, target):
+            remember(delta)
+            lo, hi = 0.0, 1.0
+            for _ in range(LINESEARCH_ITERS):
+                mid = 0.5 * (lo + hi)
+                if _gt_bad(_uint8_hwc(x, delta * mid),
+                           classifiers, names, device, target):
+                    lo = mid
+                else:
+                    hi = mid
+            with torch.no_grad():
+                delta = delta * hi
+            remember(delta)
+
+        # ---- Stage B: Adam recovery (evaluator-exact uint8 accept gate) ----
+        # Adaptive phases: fresh-momentum Adam + binary line search each phase.
+        # kappa anneals 1.0 -> 0.1 so fooled margins hug the decision boundary
+        # (the uint8 gate is the real safety net); Adam lr shrinks late for
+        # fine polishing. Easy images stop early; hard ones spend up to ~2x.
+        locked = [n for n in names
+                  if n not in _gt_bad(_uint8_hwc(x, delta), classifiers, names,
+                                      device, target)]
+        if locked:
+            b1, b2, eps_a = 0.9, 0.999, 1e-8
+            psteps = max(10, rec_steps // 3)
+            budget = rec_steps * 2
+            done = 0
+            stale = 0
+            best_q = q_of(delta)
+
+            def linescale(d):
+                """Smallest perturbation scale passing the gt gate;
+                returns (d*hi, hi). hi==1.0 means no slack."""
+                if _gt_bad(_uint8_hwc(x, d), classifiers, names, device, target):
+                    return d, 1.0
+                lo, hi = 0.0, 1.0
+                for _ in range(LINESEARCH_ITERS):
+                    mid = 0.5 * (lo + hi)
+                    if _gt_bad(_uint8_hwc(x, d * mid), classifiers, names,
+                               device, target):
+                        lo = mid
+                    else:
+                        hi = mid
+                return (d * hi).detach(), hi
+
+            while done < budget and stale < 2:
+                lr_t = REC_LR * (0.6 if done >= rec_steps else 1.0)
+                m_mom = torch.zeros_like(x)
+                v_mom = torch.zeros_like(x)
+                q_before = q_of(delta)
+                for it in range(psteps):
+                    kappa_t = KAPPA_REC + (0.1 - KAPPA_REC) * min(
+                        1.0, (done + it) / max(1, budget - 1))
+                    d_req = delta.detach().requires_grad_(True)
+                    adv = adv_of(d_req)
+                    q_s = ssim_fn(x, adv)
+                    q_l = lpips_fn(base, adv * 2 - 1).mean()
+                    q = 0.5 * q_s + 0.5 * (1.0 - q_l)
+                    m_term = torch.zeros((), device=device)
+                    for n, b in branches.items():
+                        if n in locked:
+                            z = b(adv)[0]
+                            m_term = m_term + F.softplus(
+                                z[1 - target] - z[target] + kappa_t)
+                    loss = m_term + LAMBDA_REC * (1.0 - q)
+                    g = torch.autograd.grad(loss, d_req)[0]
+                    with torch.no_grad():
+                        m_mom = b1 * m_mom + (1.0 - b1) * g
+                        v_mom = b2 * v_mom + (1.0 - b2) * g * g
+                        m_hat = m_mom / (1.0 - b1 ** (it + 1))
+                        v_hat = v_mom / (1.0 - b2 ** (it + 1))
+                        cand = (d_req - lr_t * m_hat / (v_hat.sqrt() + eps_a))
+                        cand = (cand.clamp(-epsilon, epsilon) * allow).detach()
+                        if not _gt_bad(_uint8_hwc(x, cand), classifiers, locked,
+                                       device, target):
+                            delta = cand
+                            qv = float(q.item())
+                            if qv > best_q:
+                                best_q = qv
+                                remember(cand)
+                done += psteps
+                delta, hi = linescale(delta)
+                remember(delta)
+                q_gain = q_of(delta) - q_before
+                if hi > 0.999 and q_gain < 0.002:
+                    stale += 1
+                else:
+                    stale = 0
+            delta = delta.detach()
+
+        # ---- Stage C: uint8 verification + re-attack on slippage ----
+        for _ in range(VERIFY_ROUNDS):
+            remember(delta)
+            if not _gt_bad(_uint8_hwc(x, delta), classifiers, names,
+                           device, target):
+                break
+            acc = torch.zeros_like(x)
+            for _ in range(REATTACK_STEPS):
+                d_req = delta.detach().requires_grad_(True)
+                g = torch.autograd.grad(loss_on(d_req), d_req)[0]
+                g = g / (g.abs().mean() + 1e-12)
+                acc = MU * acc + g
+                with torch.no_grad():
+                    delta = ((d_req - step * acc.sign()) * allow
+                             ).clamp(-epsilon, epsilon).detach()
+                if not _gt_bad(_uint8_hwc(x, delta), classifiers, names,
+                               device, target):
+                    break
+            remember(delta)
+
+    # Pass 1: default fast configuration.
+    run_pass()
+    # Pass 2 (rescue): if the image is still imperfect — any detector not
+    # fooled, or Q below RESCUE_Q — retry with a finer acquisition step and
+    # more iterations (smaller L-infinity steps trace a shorter path to the
+    # decision boundary). remember() keeps the best image across both passes.
+    if best_key < (len(names), RESCUE_Q):
+        run_pass(step=RESCUE_STEP, steps=RESCUE_STEPS, tail_steps=RESCUE_TAIL)
+
+    return best_u if best_u is not None else image
