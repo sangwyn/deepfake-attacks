@@ -1,0 +1,27 @@
+original_root: /home/aiattacks/dataset/celebA/TEST/TEST_FAKE
+attack: direction5_scheduler
+save_attacked_dir: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction5/test_fake_full_attacked
+models_dir: /home/aiattacks/pengyang/deepfake-attacks/weights
+save_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction5/test_fake_full.json
+classifiers: [vit_b_16, densenet121_dct]
+dct_log_scale: true
+weights: {vit_b_16: 1.0, densenet121_dct: 1.0}
+aggregate: sum
+device: cuda
+alpha: 0.5
+seed: 0
+epsilon: 0.03137254901960784
+step_size: 0.00196078431372549
+iterations: 40
+schedule_interval: 5
+temperature: 0.5
+scheduler_mode: adaptive
+diversity_penalty: 0.05
+quality_penalty: 0.01
+margin_temperature: 1.0
+gain_ema_decay: 0.7
+momentum: 0.75
+min_primitive_weight: 0.05
+acceptance_margin: 0.0
+stagnation_patience: 2
+step_decay: 0.5

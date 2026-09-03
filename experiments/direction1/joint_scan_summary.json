@@ -1,0 +1,50 @@
+{
+  "results": [
+    {
+      "result": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/joint_middle_results_vit10_dct90.json",
+      "final_score": 130.21209273538716,
+      "vit_success": 0.94,
+      "dct_success": 0.58,
+      "ssim": 0.9099601529047925,
+      "lpips": 0.2009739042073488,
+      "eligible": false
+    },
+    {
+      "result": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/joint_middle_results_vit20_dct80.json",
+      "final_score": 126.04314506625177,
+      "vit_success": 0.95,
+      "dct_success": 0.52,
+      "ssim": 0.9119630049781476,
+      "lpips": 0.19613501124083996,
+      "eligible": false
+    },
+    {
+      "result": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/joint_middle_results_vit30_dct70.json",
+      "final_score": 129.36608273598821,
+      "vit_success": 0.97,
+      "dct_success": 0.53,
+      "ssim": 0.9138718633634927,
+      "lpips": 0.19201982580125332,
+      "eligible": false
+    },
+    {
+      "result": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/joint_middle_results_vit50_dct50.json",
+      "final_score": 125.43210356113846,
+      "vit_success": 0.97,
+      "dct_success": 0.48,
+      "ssim": 0.9167633058523663,
+      "lpips": 0.18583022348582745,
+      "eligible": false
+    }
+  ],
+  "selected": {
+    "result": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction1/joint_middle_results_vit10_dct90.json",
+    "final_score": 130.21209273538716,
+    "vit_success": 0.94,
+    "dct_success": 0.58,
+    "ssim": 0.9099601529047925,
+    "lpips": 0.2009739042073488,
+    "eligible": false
+  },
+  "eligible_count": 0
+}

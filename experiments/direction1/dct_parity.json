@@ -1,0 +1,12 @@
+{
+  "max_abs_error": 4.6133995056152344e-05,
+  "mean_abs_error": 6.363077318383148e-06,
+  "gradient_nonzero": true,
+  "gradient_has_nan": false,
+  "gradient_has_inf": false,
+  "preprocess_shape": [1, 1, 128, 128],
+  "resize_mode": "bilinear",
+  "align_corners": false,
+  "grayscale_weights": [0.299, 0.587, 0.114],
+  "log_stability": 1e-6
+}

@@ -1,0 +1,12 @@
+models_dir: /home/aiattacks/pengyang/deepfake-attacks/weights
+split_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/data_split_seed0.json
+train_split: tuning
+eval_split: held_out
+output_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/shared_filter27_heldout_seed0.json
+checkpoint: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/shared_filter27_seed0.pt
+seed: 0
+kernel_size: 27
+epsilon: 0.03137254901960784
+step_size: 0.00196078431372549
+batch_size: 4
+epochs: 8

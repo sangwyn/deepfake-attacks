@@ -1,0 +1,20 @@
+{
+  "final_score": 2025.190096261034,
+  "aggregate": "sum",
+  "alpha": 0.5,
+  "images_evaluated": 1554,
+  "per_classifier": {
+    "vit_b_16": {
+      "clf_weight": 1.0,
+      "attack_success": 0.9646074646074646,
+      "mean_ssim": 0.9437022175498281,
+      "mean_lpips": 0.1384134902768652
+    },
+    "densenet121_dct": {
+      "clf_weight": 1.0,
+      "attack_success": 0.4768339768339768,
+      "mean_ssim": 0.9437022175498281,
+      "mean_lpips": 0.1384134902768652
+    }
+  }
+}

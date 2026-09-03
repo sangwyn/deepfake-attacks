@@ -1,0 +1,3 @@
+dataset_root: /home/aiattacks/dataset/standardized_1024
+bins: 10
+output: experiments/direction4/dataset_stats_standardized_1024.json

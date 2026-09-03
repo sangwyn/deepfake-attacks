@@ -1,0 +1,19 @@
+{
+  "images": 16,
+  "attacked_root": "experiments/direction5/attacked_scheduler_v3_equal_16",
+  "target": "Real",
+  "real_rate": {
+    "vit_b_16": {
+      "clean": 0.0,
+      "jpeg75": 0.0,
+      "resize75": 0.0,
+      "blur05": 0.0
+    },
+    "densenet121_dct": {
+      "clean": 0.5,
+      "jpeg75": 0.5,
+      "resize75": 0.4375,
+      "blur05": 0.375
+    }
+  }
+}

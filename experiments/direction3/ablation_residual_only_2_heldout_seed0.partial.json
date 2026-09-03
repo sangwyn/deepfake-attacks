@@ -1,0 +1,43 @@
+{
+  "config": {
+    "models_dir": "/home/aiattacks/pengyang/deepfake-attacks/weights",
+    "split_json": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/data_split_seed0.json",
+    "eval_split": "held_out",
+    "universal_checkpoint": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/universal_additive_seed0.pt",
+    "output_json": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/ablation_residual_only_2_heldout_seed0.json",
+    "residual_epsilons": [
+      0.00784313725490196
+    ],
+    "step_size": 0.00196078431372549,
+    "iterations": 10,
+    "batch_size": 4,
+    "vit_weight": 0.5,
+    "dct_weight": 0.5,
+    "modes": [
+      "residual_only"
+    ]
+  },
+  "eval_split": "held_out",
+  "results": [
+    {
+      "mode": "residual_only",
+      "residual_epsilon": 0.00784313725490196,
+      "iterations": 10,
+      "images": 1354,
+      "clean_vit_real": 0.0,
+      "clean_dct_real": 0.051698670605613,
+      "raw_vit_target_rate": 0.12038404726735598,
+      "raw_dct_target_rate": 0.672082717872969,
+      "vit_clean_corrected_asr": 0.12038404726735598,
+      "dct_clean_corrected_asr": 0.661993769470405,
+      "joint_clean_corrected_asr": 0.08255451713395638,
+      "vit_eligible": 1354,
+      "dct_eligible": 1284,
+      "joint_eligible": 1284,
+      "mean_ssim": 0.9894581754824678,
+      "mean_lpips": 0.026779420079217683,
+      "attack_seconds": 167.2367398813367,
+      "seconds_per_image": 0.12351310183259726
+    }
+  ]
+}

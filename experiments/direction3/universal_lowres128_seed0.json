@@ -1,0 +1,145 @@
+{
+  "config": {
+    "original_root": "/home/aiattacks/pengyang/Test/group1/test2(whole)/AADD_2026_Test",
+    "exclude_root": "/home/aiattacks/pengyang/Test/group1/test1",
+    "models_dir": "/home/aiattacks/pengyang/deepfake-attacks/weights",
+    "split_json": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/data_split_seed0.json",
+    "output_json": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/universal_lowres128_seed0.json",
+    "checkpoint": "/home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/universal_lowres128_seed0.pt",
+    "device": "cuda",
+    "seed": 0,
+    "tuning_images": 100,
+    "validation_images": 100,
+    "universal_size": 128,
+    "epsilon": 0.03137254901960784,
+    "step_size": 0.00196078431372549,
+    "batch_size": 4,
+    "epochs": 8
+  },
+  "split": {
+    "tuning": 100,
+    "validation": 100,
+    "held_out": 1354
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 2.265235176086426,
+      "vit_loss": 2.2868794107437136,
+      "dct_loss": 2.24359094619751,
+      "validation": {
+        "images": 100,
+        "vit_success": 0.01,
+        "dct_success": 0.04,
+        "mean_ssim": 0.9911349745749688,
+        "mean_lpips": 0.033758453568443654
+      }
+    },
+    {
+      "epoch": 2,
+      "loss": 2.2449354410171507,
+      "vit_loss": 2.2527388095855714,
+      "dct_loss": 2.237132043838501,
+      "validation": {
+        "images": 100,
+        "vit_success": 0.02,
+        "dct_success": 0.03,
+        "mean_ssim": 0.9838199242946621,
+        "mean_lpips": 0.06129796818830073
+      }
+    },
+    {
+      "epoch": 3,
+      "loss": 2.2307789754867553,
+      "vit_loss": 2.2242544078826905,
+      "dct_loss": 2.23730354309082,
+      "validation": {
+        "images": 100,
+        "vit_success": 0.03,
+        "dct_success": 0.09,
+        "mean_ssim": 0.9782457654637041,
+        "mean_lpips": 0.07985507005825639
+      }
+    },
+    {
+      "epoch": 4,
+      "loss": 2.1873722648620606,
+      "vit_loss": 2.1978719425201416,
+      "dct_loss": 2.176872510910034,
+      "validation": {
+        "images": 100,
+        "vit_success": 0.03,
+        "dct_success": 0.07,
+        "mean_ssim": 0.9748041201447823,
+        "mean_lpips": 0.0910039321705699
+      }
+    },
+    {
+      "epoch": 5,
+      "loss": 2.190391421318054,
+      "vit_loss": 2.1799460077285766,
+      "dct_loss": 2.200836806297302,
+      "validation": {
+        "images": 100,
+        "vit_success": 0.04,
+        "dct_success": 0.07,
+        "mean_ssim": 0.9722652800635206,
+        "mean_lpips": 0.09826521320268512
+      }
+    },
+    {
+      "epoch": 6,
+      "loss": 2.14994441986084,
+      "vit_loss": 2.129937615394592,
+      "dct_loss": 2.1699513149261476,
+      "validation": {
+        "images": 100,
+        "vit_success": 0.04,
+        "dct_success": 0.07,
+        "mean_ssim": 0.9710210071467759,
+        "mean_lpips": 0.10022434946149587
+      }
+    },
+    {
+      "epoch": 7,
+      "loss": 2.1440034246444704,
+      "vit_loss": 2.1297247552871705,
+      "dct_loss": 2.158282060623169,
+      "validation": {
+        "images": 100,
+        "vit_success": 0.04,
+        "dct_success": 0.07,
+        "mean_ssim": 0.9690611354630275,
+        "mean_lpips": 0.10730080170556903
+      }
+    },
+    {
+      "epoch": 8,
+      "loss": 2.160182709693909,
+      "vit_loss": 2.099670786857605,
+      "dct_loss": 2.2206946182250977,
+      "validation": {
+        "images": 100,
+        "vit_success": 0.04,
+        "dct_success": 0.08,
+        "mean_ssim": 0.9684371728357887,
+        "mean_lpips": 0.1085938374325633
+      }
+    }
+  ],
+  "validation": {
+    "images": 100,
+    "vit_success": 0.03,
+    "dct_success": 0.09,
+    "mean_ssim": 0.9782457654637041,
+    "mean_lpips": 0.07985507005825639
+  },
+  "held_out": {
+    "images": 1354,
+    "vit_success": 0.016986706056129987,
+    "dct_success": 0.08345642540620384,
+    "mean_ssim": 0.9766024645117463,
+    "mean_lpips": 0.08163320483637085
+  },
+  "delta_linf": 0.0313725508749485
+}

@@ -1,0 +1,15 @@
+# Minimal evaluator smoke test using the checkpoint included in this repo.
+# Set original_root to a directory containing one or more test images.
+original_root: ../AADD-2026/AADD_2026_Test
+attack: identity
+save_attacked_dir: null
+models_dir: ../weights/
+save_json: ../experiments/results_identity.json
+classifiers:
+  - densenet121_dct
+dct_log_scale: true
+weights:
+  densenet121_dct: 1.0
+aggregate: mean
+device: auto
+alpha: 0.5

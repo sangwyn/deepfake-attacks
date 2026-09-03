@@ -32,6 +32,15 @@ def torch_dct2(x):
     return c_h @ x @ c.transpose(-1, -2)
 
 
+def torch_idct2(x):
+    """Apply the inverse of the orthonormal 2-D DCT-II."""
+    if x.ndim != 4:
+        raise ValueError(f"expected BCHW input, got shape {tuple(x.shape)}")
+    c_w = _dct_matrix(x.shape[-1], x.device, x.dtype)
+    c_h = _dct_matrix(x.shape[-2], x.device, x.dtype)
+    return c_h.transpose(-1, -2) @ x @ c_w
+
+
 def dct_preprocess(image, log_scale=True, resize_mode="bilinear"):
     """Differentiable equivalent of evaluator.build_dct_transform.
 

@@ -1,0 +1,62 @@
+{
+  "dataset": "celebA/TEST/TEST_FAKE",
+  "images": 100,
+  "rows": [
+    {
+      "direction": "direction1",
+      "status": "complete",
+      "images": 100,
+      "vit_real": 0.97,
+      "dct_real": 0.46,
+      "mean_ssim": 0.9429485467924701,
+      "mean_lpips": 0.159193155169487,
+      "final_score": 127.93328816007468,
+      "path": "experiments/direction1/test_fake_full.json"
+    },
+    {
+      "direction": "direction2",
+      "status": "complete",
+      "images": 100,
+      "vit_real": 0.97,
+      "dct_real": 0.48,
+      "mean_ssim": 0.9430264611153523,
+      "mean_lpips": 0.1589663615822792,
+      "final_score": 129.55759688940856,
+      "path": "experiments/direction2/test_fake_full.json"
+    },
+    {
+      "direction": "direction3",
+      "status": "complete",
+      "images": 100,
+      "vit_real": 0.16,
+      "dct_real": 0.82,
+      "mean_ssim": 0.9374742497576481,
+      "mean_lpips": 0.18755692653357983,
+      "final_score": 85.82639700234216,
+      "seconds": 36.16398102976382,
+      "path": "experiments/direction3/test_fake_full.json"
+    },
+    {
+      "direction": "direction4",
+      "status": "complete",
+      "images": 100,
+      "vit_real": 0.91,
+      "dct_real": 0.51,
+      "mean_ssim": 0.9464005522912874,
+      "mean_lpips": 0.13546931870281698,
+      "final_score": 128.77221794966704,
+      "path": "experiments/direction4/test_fake_full.json"
+    },
+    {
+      "direction": "direction5",
+      "status": "complete",
+      "images": 100,
+      "vit_real": 0.44,
+      "dct_real": 0.41,
+      "mean_ssim": 0.7384837398556696,
+      "mean_lpips": 0.3668531548976898,
+      "final_score": 59.4219779551998,
+      "path": "experiments/direction5/test_fake_full.json"
+    }
+  ]
+}

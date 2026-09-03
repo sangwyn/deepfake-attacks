@@ -1,0 +1,32 @@
+{
+  "final_score": 0.9105334861488246,
+  "aggregate": "sum",
+  "alpha": 0.5,
+  "images_evaluated": 4,
+  "per_classifier": {
+    "vit_b_16": {
+      "clf_weight": 1.0,
+      "attack_success": 0.0,
+      "mean_ssim": 0.9725026377005038,
+      "mean_lpips": 0.06274774158373475
+    },
+    "densenet121_dct": {
+      "clf_weight": 1.0,
+      "attack_success": 0.0,
+      "mean_ssim": 0.9725026377005038,
+      "mean_lpips": 0.06274774158373475
+    },
+    "npr": {
+      "clf_weight": 1.0,
+      "attack_success": 0.25,
+      "mean_ssim": 0.9725026377005038,
+      "mean_lpips": 0.06274774158373475
+    },
+    "aide": {
+      "clf_weight": 1.0,
+      "attack_success": 0.0,
+      "mean_ssim": 0.9725026377005038,
+      "mean_lpips": 0.06274774158373475
+    }
+  }
+}

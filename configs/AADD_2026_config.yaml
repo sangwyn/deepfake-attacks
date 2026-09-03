@@ -1,17 +1,18 @@
 # AADD 2026 Adversarial Robustness Evaluation
 # In order to run the AADD_2026_evaluation.py script, you must provide:
-original_root: ../AADD-2026/AADD_2026_Test  
+original_root: ../../Test
 
 attack: ifgsm
 
 save_attacked_dir: null
 
-models_dir: weights/ 
+models_dir: ../weights/
 
-save_json: experiments/results_identity.json
+save_json: experiments/results_ifgsm.json
 
 
-# You can choose one or both of the classifiers at time of evaluation:
+# Choose classifiers for evaluation. IFGSM currently requires vit_b_16;
+# use attack: identity to smoke-test with only the available DCT checkpoint.
 classifiers:                              
   - vit_b_16
   - densenet121_dct
