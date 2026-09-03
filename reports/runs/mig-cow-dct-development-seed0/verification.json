@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "outcome": "passed",
+  "run_dir": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/mig-cow-dct-development-attempt-1/attempt-0001",
+  "schema_version": 1,
+  "verified_at": "2026-09-03T02:16:37+00:00",
+  "verified_files": {
+    "artifacts.json": "6ca7b1be1cd0e5ebdaf90b5246699ef0e8c4bfc63fdba4e06befa32e5537559b",
+    "manifest.snapshot.jsonl": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff",
+    "norm_audit.json": "b0f5d88cb55d3fe62e6a518c29530b22c1b8b238c0e7310639a66a711ed05684",
+    "per_sample_metrics.jsonl": "ee77494b368ef711d9715adf50ccb5d116d0c033534347bd4b0114d2273ff1bf",
+    "provenance.json": "658399fd469e08cab6ec2a403b29b799b74bd875dc00f1cd73f4badefe227a07",
+    "resolved_config.yaml": "190f6024a8942d652d6a56d6ea9e47ed45d098cd774f59ddb5b3bd2ede23e5f6",
+    "resolved_server_config.yaml": "dacd870a4f598a46ed983c80b1d0fdc045bed895cecb164bd7fe50a87459a0f2",
+    "selection.jsonl": "7e7993ce40bc02f8b86b0f038e5ea2d6159033baba025c6c474f093108d15247",
+    "summary.json": "2743a11667be8925f9d7eb136552f625ce3b8bb261e4211fe521acf49bb552d2"
+  }
+}

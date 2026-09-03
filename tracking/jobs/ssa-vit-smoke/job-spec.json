@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_kind": "attack-experiment",
+  "config_path": "configs/experiments/ssa-vit-smoke.yaml",
+  "run_dir": "tracking/runs/ssa-smoke/ssa-vit-smoke-seed0-attempt1",
+  "requested_memory_mb": 24000,
+  "timeout_seconds": 21600,
+  "priority": 0,
+  "max_attempts": 1
+}

@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "outcome": "passed",
+  "run_dir": "/home/aiattacks/oleg/aadd-attack-pipeline/tracking/runs/20260902T194219Z-development-89aeba08/14-mi-di-fgsm-dct-development-attempt-1/attempt-0001",
+  "schema_version": 1,
+  "verified_at": "2026-09-03T00:42:21+00:00",
+  "verified_files": {
+    "artifacts.json": "52eeb519f1a8fd4068485c6297f1160e66cfe0f1096ba717adddf21505ea41c6",
+    "manifest.snapshot.jsonl": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff",
+    "norm_audit.json": "b0f5d88cb55d3fe62e6a518c29530b22c1b8b238c0e7310639a66a711ed05684",
+    "per_sample_metrics.jsonl": "ac21f6bc66400bc1442f1ffe2d655e94f98ea10c1082b774b713121fdccb2507",
+    "provenance.json": "6d997340ca10c581399f597baa64a9a7704d1dac4890472f4e85064332a0df3a",
+    "resolved_config.yaml": "4f7a71d985da9afd7b434ce963f4ca470716d31b2c7679beadce65913151ac01",
+    "resolved_server_config.yaml": "dacd870a4f598a46ed983c80b1d0fdc045bed895cecb164bd7fe50a87459a0f2",
+    "selection.jsonl": "7e7993ce40bc02f8b86b0f038e5ea2d6159033baba025c6c474f093108d15247",
+    "summary.json": "5b280ceb0260f38f90bea55c3e41d036726100ae37d175d5ae740dc7cdcb4208"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "python": "3.12.3",
+  "cuda_wheel_runtime": "12.1",
+  "pytorch": "2.3.0+cu121",
+  "torchvision": "0.18.0+cu121",
+  "cudnn_runtime": "8.9.2 (8902)",
+  "pip": "26.2.1",
+  "setuptools": "75.8.2",
+  "wheel": "0.45.1",
+  "reference_server": {
+    "gpu": "NVIDIA L40",
+    "gpu_count": 8,
+    "driver_observed": "550.120",
+    "cuda_reported_by_driver": "12.4",
+    "verified_reference_venv": "/home/aiattacks/pengyang/deepfake-attacks/.venv",
+    "note": "The reference venv is evidence only. Create a new project venv; do not reuse or modify it."
+  },
+  "opencode": {
+    "binary": "/home/aiattacks/.opencode/bin/opencode",
+    "version": "1.18.26",
+    "model": "naapi/gpt-5.6-terra"
+  },
+  "lock_file": "requirements.lock",
+  "lock_file_sha256": "abc5eab1384939ead8b5854874ba9defb3bc8338d226592d6c95a7b286c40737",
+  "reference_freeze": "environment/reference-server-freeze.txt",
+  "reference_freeze_sha256": "4b13caa4ad374e2f3e6dd342c90e6ff7e738d4e12689f4a31c262a6a3dcba4c6"
+}

@@ -1,0 +1,60 @@
+schema_version: 1
+idea_id: pgd
+status: approved
+title: Projected Gradient Descent
+hypothesis: 'Многократные целевые градиентные шаги с проекцией в Linf-шар повысят white-box
+  ASR относительно FGSM при тех же бюджетах и метриках качества.
+
+  '
+novelty: 'В отличие от FGSM, атака использует случайную допустимую инициализацию и повторную
+  проекцию после каждого шага оптимизации.
+
+  '
+baseline:
+  attack: fgsm
+implementation:
+  module: attacks.pgd
+  source_model: each-valid-single-source
+  targeted: true
+parameters:
+  epsilon:
+  - 0.00784313725490196
+  - 0.01568627450980392
+  - 0.03137254901960784
+  step_size: epsilon / 4
+  iterations: 10
+  random_start: true
+evaluation:
+  first_scope: full
+  source_label: 1
+  target_class: 0
+  secondary_condition: untargeted-both-classes
+  manifest: manifests/celebA/test_fake.jsonl
+  sample_limit: null
+  source_target_protocol: all-valid-single-source-pairs
+  target_models:
+  - vit_b_16
+  - densenet121_dct
+  seed: 0
+required_tests:
+- output shape and uint8 type
+- finite gradients at every iteration
+- deterministic output for fixed seed
+- targeted loss direction
+- Linf projection after every update
+- Linf bound after uint8 save and reload
+- random start remains inside the epsilon ball
+- one-step no-random-start FGSM recovery
+retention_gate:
+  metric: white_box_conditional_asr
+  minimum_gain_percentage_points: 0
+  maximum_ssim_regression: 0.01
+  maximum_lpips_regression: 0.01
+gpu:
+  requested_memory_mb: 24000
+  timeout_seconds: 14400
+protected_files:
+- AADD-2026/AADD_2026_evaluation.py
+- manifests
+- weights
+- results

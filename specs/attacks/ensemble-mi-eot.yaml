@@ -1,0 +1,70 @@
+schema_version: 1
+idea_id: ensemble-mi-eot
+status: deferred
+optional: true
+title: Leave-one-detector-out ensemble MI-FGSM with EoT
+hypothesis: 'Усреднение momentum-градиентов по гетерогенному source ensemble и реалистичным
+  преобразованиям повысит устойчивый transfer ASR на held-out detector относительно ансамблевой
+  MI-FGSM без EoT.
+
+  '
+novelty: 'Каждая итерация оптимизирует ожидаемый loss по resize, crop и JPEG-like преобразованиям,
+  не используя held-out detector ни на одном этапе.
+
+  '
+baseline:
+  attack: ensemble-mi-fgsm
+implementation:
+  module: attacks.ensemble_mi_fgsm_eot
+  source_model: leave-one-detector-out-ensemble
+  targeted: true
+parameters:
+  epsilon:
+  - 0.00784313725490196
+  - 0.01568627450980392
+  - 0.03137254901960784
+  step_size: epsilon / iterations
+  iterations: 10
+  momentum: 1.0
+  ensemble_weighting: uniform
+  eot_samples: 5
+  transformations:
+  - resize
+  - crop
+  - jpeg-like
+evaluation:
+  first_scope: full
+  source_label: 1
+  target_class: 0
+  secondary_condition: untargeted-both-classes
+  manifest: manifests/celebA/test_fake.jsonl
+  sample_limit: null
+  source_target_protocol: leave-one-detector-out
+  target_models:
+  - vit_b_16
+  - densenet121_dct
+  seed: 0
+required_tests:
+- output shape and uint8 type
+- finite gradients through every EoT transform
+- deterministic output for fixed seed
+- targeted loss direction
+- Linf projection after every update
+- uniform ensemble weighting
+- identity transforms recover ensemble MI-FGSM
+- one EoT sample recovers the corresponding transformed-input update
+- held-out target never influences generation tuning or selection
+- robustness metrics are computed after actual JPEG and resize transforms
+retention_gate:
+  metric: robust_held_out_conditional_transfer_asr
+  minimum_gain_percentage_points: 0
+  maximum_ssim_regression: 0.01
+  maximum_lpips_regression: 0.01
+gpu:
+  requested_memory_mb: 24000
+  timeout_seconds: 28800
+protected_files:
+- AADD-2026/AADD_2026_evaluation.py
+- manifests
+- weights
+- results

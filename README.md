@@ -1,14 +1,24 @@
 # Adversarial Attacks on AI Image Detectors
 
-## Motivation
+This branch adds a reproducible research pipeline and a restricted OpenCode
+control plane around the original AADD evaluator. The original `evaluate.py`
+and attack modules remain available; new orchestration lives beside them.
 
-## Structure
+## Separation of concerns
 
-- `attacks/` contains `.py` files for all the attacks (one file per attack). See [attacks/template.py](attacks/template.py) for an example
+| Purpose | Canonical location on the server | Git policy |
+|---|---|---|
+| Versioned project and agent instructions | `/home/aiattacks/oleg/aadd-attack-pipeline` | tracked |
+| CelebA dataset | `/home/aiattacks/dataset/celebA` | external, read-only |
+| Detector and LPIPS weights | `/home/aiattacks/oleg/aadd-attack-assets/weights` | external, hash-verified |
+| Heavy run artifacts | `/home/aiattacks/oleg/aadd-attack-runs` | external |
+| Compact run ledger | `tracking/` inside the project | tracked |
+| GPU queue database and locks | `.gpuq/` inside the project | local, ignored |
 
-- `evaluate.py` is used to run the evaluation pipeline from AADD 2026 challenge
+Never put API keys in this repository. The project references the existing
+OpenCode provider configuration but does not copy it.
 
-- `configs/` contains config files for *evaluate.py*
+## First server setup
 
 - `weights/` contains deepfake classifiers for attacking
 
