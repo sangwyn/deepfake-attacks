@@ -47,6 +47,7 @@ DECISIONS = {"retain", "reject", "baseline", "pending", "not_applicable"}
 TERMINAL_STATES = {"passed", "failed", "blocked", "cancelled", "skipped"}
 ABORT_STATES = {"failed", "blocked", "cancelled"}
 TASK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 # Mirrors ops.gpuq.models.TERMINAL_STATES; a job in any other state is still
 # owned by the scheduler and must be polled again.
@@ -525,13 +526,12 @@ def validate_final_attack_status(
     return status
 
 
-def validate_review_status(
-    status_path: Path,
+def validate_review_document(
+    status: dict[str, Any],
     task: dict[str, Any],
     max_finalists: int,
     allowed_attacks: set[str],
 ) -> dict[str, Any]:
-    status = load_json(status_path)
     if status.get("schema_version") != 1:
         raise CampaignError("Review status must use schema_version 1")
     if status.get("task") != task["id"]:
@@ -561,6 +561,63 @@ def validate_review_status(
                 + ", ".join(sorted(unknown))
             )
         require_artifact_list(status, "evidence")
+    return status
+
+
+def validate_review_status(
+    status_path: Path,
+    task: dict[str, Any],
+    max_finalists: int,
+    allowed_attacks: set[str],
+) -> dict[str, Any]:
+    return validate_review_document(
+        load_json(status_path), task, max_finalists, allowed_attacks
+    )
+
+
+def persist_review_status_from_log(
+    log_path: Path,
+    status_path: Path,
+    task: dict[str, Any],
+    max_finalists: int,
+    allowed_attacks: set[str],
+) -> dict[str, Any]:
+    """Validate the reviewer's sole JSON response, then persist it atomically.
+
+    The reviewer is intentionally read-only, so it cannot create ``status.json``.
+    OpenCode writes the model response to stdout, which the controller already
+    captures in ``agent.log``. Only a single standalone JSON object is accepted;
+    tool output, prose, multiple candidates, and schema-invalid objects fail
+    closed instead of being treated as a scientific decision.
+    """
+
+    try:
+        lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as exc:
+        raise CampaignError(f"Cannot read reviewer log {log_path}: {exc}") from exc
+
+    candidates: list[dict[str, Any]] = []
+    for raw_line in lines:
+        line = ANSI_ESCAPE_RE.sub("", raw_line).strip()
+        if not (line.startswith("{") and line.endswith("}")):
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            candidates.append(value)
+
+    if len(candidates) != 1:
+        raise CampaignError(
+            "Reviewer must return exactly one standalone JSON object; "
+            f"found {len(candidates)} in {log_path}"
+        )
+
+    status = validate_review_document(
+        candidates[0], task, max_finalists, allowed_attacks
+    )
+    atomic_write_json(status_path, status)
     return status
 
 
@@ -1024,7 +1081,7 @@ def run_campaign(
         elif return_code != 0:
             task["state"] = "failed"
             task["summary"] = f"OpenCode exited with status {return_code}"
-        elif not status_path.is_file():
+        elif task["kind"] == "attack" and not status_path.is_file():
             task["state"] = "failed"
             task["summary"] = "OpenCode exited without writing the required status JSON"
         else:
@@ -1032,9 +1089,17 @@ def run_campaign(
             try:
                 if task["kind"] == "attack":
                     status = validate_attack_status(status_path, task)
-                else:
+                elif status_path.is_file():
                     status = validate_review_status(
                         status_path, task, max_finalists, allowed_attacks
+                    )
+                else:
+                    status = persist_review_status_from_log(
+                        log_path,
+                        status_path,
+                        task,
+                        max_finalists,
+                        allowed_attacks,
                     )
             except CampaignError as exc:
                 task["state"] = "failed"

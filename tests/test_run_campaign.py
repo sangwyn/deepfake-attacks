@@ -533,6 +533,64 @@ class ReviewStatusTests(unittest.TestCase):
             )
             self.assertEqual(status["outcome"], "blocked")
 
+    def test_controller_persists_the_read_only_reviewers_stdout(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            evidence = root / "verification.json"
+            evidence.write_text("{}\n", encoding="utf-8")
+            status_path = root / "status.json"
+            document = {
+                "schema_version": 1,
+                "task": "select-finalists",
+                "outcome": "passed",
+                "summary": "Frozen gates selected the strongest verified run.",
+                "finalists": ["mifgsm"],
+                "evidence": [str(evidence)],
+            }
+            log_path = root / "agent.log"
+            log_path.write_text(
+                "\x1b[0mreviewer output\x1b[0m\n"
+                + json.dumps(document, separators=(",", ":"))
+                + "\n",
+                encoding="utf-8",
+            )
+
+            status = run_campaign.persist_review_status_from_log(
+                log_path, status_path, self.TASK, 2, self.ALLOWED
+            )
+
+            self.assertEqual(status["finalists"], ["mifgsm"])
+            self.assertEqual(
+                json.loads(status_path.read_text(encoding="utf-8")), document
+            )
+
+    def test_invalid_reviewer_stdout_is_not_persisted(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            log_path = root / "agent.log"
+            status_path = root / "status.json"
+            log_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "task": "select-finalists",
+                        "outcome": "passed",
+                        "summary": "Invented an unavailable finalist.",
+                        "finalists": ["unknown"],
+                        "evidence": [str(root / "missing.json")],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(run_campaign.CampaignError):
+                run_campaign.persist_review_status_from_log(
+                    log_path, status_path, self.TASK, 2, self.ALLOWED
+                )
+
+            self.assertFalse(status_path.exists())
+
 
 
 
