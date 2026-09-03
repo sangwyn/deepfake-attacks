@@ -54,6 +54,9 @@ python3 scripts/run_campaign.py --help
 /home/aiattacks/.opencode/bin/opencode run --command campaign --dir "$PWD"
 ```
 
+`docs/SYSTEM_OVERVIEW_RU.md` describes the whole system in one file, with
+diagrams: the actors, the path of one task, the two state machines, the
+guarantees and how each is enforced, and the limits.
 `docs/OPERATOR_GPT_RU.md` is the full operator instruction: update, launch,
 monitor, read results, recover, and add an attack.
 `docs/MAINTAINER_HANDOFF_RU.md` is for whoever debugs the code: the invariants
