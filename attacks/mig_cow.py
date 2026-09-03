@@ -1,83 +1,127 @@
-"""Targeted Momentum Integrated Gradients with consensus/orthogonal weighting.
-
-The source is explicit in the resolved experiment configuration.  The
-leave-one-detector-out protocol therefore uses the selected detector for
-generation and reserves the other configured detector for transfer scoring.
-"""
+"""Momentum integrated gradients with consensus/orthogonal weighting."""
 
 import torch
-import torch.nn.functional as F
 
-from attacklab.preprocessing import from_uint8_image, preprocess_for, project_linf, to_uint8_image
+from ._utils import (
+    _adapter,
+    checked_gradient,
+    classification_loss,
+    image_to_tensor,
+    project_linf,
+    tensor_to_image,
+    validate_steps,
+)
 
 
-ATTACK_CONTRACT = {
-    "version": 1,
-    "source_model": "densenet121_dct",
-    "supported_source_models": ["vit_b_16", "densenet121_dct"],
-    "description": "Targeted MIG-COW with integrated-gradient consensus weighting.",
-}
+def _source_entries(classifiers, source_weights):
+    if not classifiers:
+        raise ValueError("at least one source detector is required")
+    source_weights = source_weights or {}
+    entries = []
+    for name, pack in classifiers.items():
+        weight = float(source_weights.get(name, 1.0))
+        if weight < 0:
+            raise ValueError("source detector weights must be non-negative")
+        if weight:
+            entries.append((name, _adapter(pack, name), weight))
+    if not entries:
+        raise ValueError("at least one source detector weight must be positive")
+    return entries
 
 
-def _integrated_gradients(model, source_model, point, baseline, target, steps):
-    """Estimate the input gradient by a straight-line integrated gradient."""
-    if steps < 1:
-        raise ValueError("integrated-gradient steps must be positive")
+def _integrated_gradient(adapter, point, baseline, objective, label, steps, name):
     gradients = []
     for index in range(1, steps + 1):
         fraction = index / steps
-        sample = (baseline + fraction * (point - baseline)).detach().requires_grad_()
-        loss = F.cross_entropy(model(preprocess_for(source_model, sample)), target)
-        gradient = torch.autograd.grad(loss, sample)[0]
-        if not torch.isfinite(gradient).all():
-            raise RuntimeError("MIG-COW encountered a non-finite integrated gradient")
-        gradients.append(gradient)
+        sample = (
+            (baseline + fraction * (point - baseline)).detach().requires_grad_(True)
+        )
+        loss = classification_loss(adapter(sample), objective, label)
+        gradients.append(checked_gradient(loss, sample, f"MIG-COW/{name}"))
     return torch.stack(gradients).mean(dim=0)
 
 
-def _consensus_orthogonal(gradients):
-    """Return consensus and residuals orthogonal to that consensus subspace."""
-    stacked = torch.stack(gradients)
-    consensus = stacked.mean(dim=0)
+def decompose_gradients(gradients, weights):
+    """Return a weighted consensus and residuals orthogonal to it."""
+    denominator = sum(weights)
+    consensus = sum(w * g for w, g in zip(weights, gradients)) / denominator
     basis = consensus.flatten()
-    denominator = torch.dot(basis, basis).clamp_min(1e-12)
+    squared_norm = torch.dot(basis, basis).clamp_min(1e-12)
     residuals = []
     for gradient in gradients:
-        residual = gradient - consensus
-        coefficient = torch.dot(residual.flatten(), basis) / denominator
-        residuals.append(residual - coefficient * consensus)
-    return consensus, torch.stack(residuals)
+        difference = gradient - consensus
+        projection = torch.dot(difference.flatten(), basis) / squared_norm
+        residuals.append(difference - projection * consensus)
+    return consensus, residuals
 
 
-def attack(image, classifiers, device, epsilon=8 / 255, step_size=None, iterations=10,
-           momentum=1.0, integrated_gradient_steps=8, consensus_weight=1.0,
-           orthogonal_weight=1.0, source_model="densenet121_dct", target_class=0):
-    if source_model not in ATTACK_CONTRACT["supported_source_models"]:
-        raise ValueError(f"mig_cow does not support source_model={source_model!r}")
-    if source_model not in classifiers:
-        raise ValueError("configured classifiers do not contain source_model")
-    if target_class not in {0, 1} or epsilon <= 0 or iterations < 1:
-        raise ValueError("invalid target_class, epsilon, or iterations")
+def attack(
+    image,
+    classifiers,
+    device,
+    *,
+    epsilon=8 / 255,
+    step_size=None,
+    iterations=10,
+    momentum=1.0,
+    integrated_gradient_steps=8,
+    consensus_weight=1.0,
+    orthogonal_weight=1.0,
+    objective="targeted_fake_to_real",
+    label=None,
+    source_weights=None,
+    seed=0,
+):
+    """Combine common and model-specific directions without using a target model."""
+    del seed
     if step_size is None:
-        step_size = epsilon / iterations
-    if step_size <= 0 or momentum < 0 or integrated_gradient_steps < 1:
-        raise ValueError("step_size, momentum, and integrated_gradient_steps must be positive")
+        step_size = float(epsilon) / iterations
+    validate_steps(epsilon, step_size, iterations)
+    if momentum < 0:
+        raise ValueError("momentum must be non-negative")
+    if not isinstance(integrated_gradient_steps, int) or integrated_gradient_steps < 1:
+        raise ValueError("integrated_gradient_steps must be a positive integer")
     if consensus_weight < 0 or orthogonal_weight < 0:
-        raise ValueError("consensus and orthogonal weights must be non-negative")
+        raise ValueError("component weights must be non-negative")
+    if consensus_weight + orthogonal_weight == 0:
+        raise ValueError("at least one component weight must be positive")
 
-    model = classifiers[source_model]["model"]
-    original = from_uint8_image(image, device)
-    attacked = original.clone()
-    accumulated = torch.zeros_like(original)
-    target = torch.tensor([target_class], device=device)
+    entries = _source_entries(classifiers, source_weights)
+    names, adapters, weights = zip(*entries)
+    original = image_to_tensor(image, device)
     baseline = torch.zeros_like(original)
+    attacked = original.clone()
+    velocity = torch.zeros_like(attacked)
     for _ in range(iterations):
-        gradient = _integrated_gradients(
-            model, source_model, attacked, baseline, target, integrated_gradient_steps
+        gradients = [
+            _integrated_gradient(
+                adapter,
+                attacked,
+                baseline,
+                objective,
+                label,
+                integrated_gradient_steps,
+                name,
+            )
+            for name, adapter in zip(names, adapters)
+        ]
+        consensus, residuals = decompose_gradients(gradients, weights)
+        # Fixed rank weights avoid consulting any held-out detector.  With one
+        # source its residual is exactly zero, recovering momentum IG.
+        residual = sum(
+            (index + 1) * weight * value
+            for index, (weight, value) in enumerate(zip(weights, residuals))
+        ) / sum((index + 1) * weight for index, weight in enumerate(weights))
+        gradient = (
+            float(consensus_weight) * consensus + float(orthogonal_weight) * residual
         )
-        consensus, residuals = _consensus_orthogonal([gradient])
-        weighted = consensus_weight * consensus + orthogonal_weight * residuals[0]
-        normalized = weighted / (weighted.abs().mean(dim=(1, 2, 3), keepdim=True) + 1e-12)
-        accumulated = momentum * accumulated + normalized
-        attacked = project_linf(attacked - step_size * accumulated.sign(), original, epsilon).detach()
-    return to_uint8_image(attacked)
+        if not torch.isfinite(gradient).all() or gradient.abs().sum() == 0:
+            raise RuntimeError("MIG-COW produced an invalid combined gradient")
+        gradient = gradient / gradient.abs().mean(
+            dim=(1, 2, 3), keepdim=True
+        ).clamp_min(1e-12)
+        velocity = float(momentum) * velocity + gradient
+        attacked = project_linf(
+            attacked - float(step_size) * velocity.sign(), original, epsilon
+        ).detach()
+    return tensor_to_image(attacked)

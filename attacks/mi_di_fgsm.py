@@ -1,98 +1,151 @@
-"""Targeted momentum diverse-input iterative FGSM in RGB pixel space."""
+"""Momentum Diverse-Input FGSM with optional expectation over transforms."""
 
 import torch
 import torch.nn.functional as F
 
-from attacklab.preprocessing import (
-    from_uint8_image,
-    preprocess_for,
+from ._utils import (
+    checked_gradient,
+    ensemble_loss,
+    image_to_tensor,
+    make_generator,
     project_linf,
-    to_uint8_image,
+    tensor_to_image,
+    validate_steps,
 )
 
 
-ATTACK_CONTRACT = {
-    "version": 1,
-    "source_model": "densenet121_dct",
-    "supported_source_models": ["vit_b_16", "densenet121_dct"],
-    "description": "Targeted MI-DI-FGSM with differentiable random resize-padding.",
-}
+def _random_value(generator, device):
+    return float(torch.rand((), generator=generator, device=device))
 
 
-def _diverse_input(
-    x: torch.Tensor,
-    probability: float,
-    resize_min_fraction: float,
-    resize_max_fraction: float,
-) -> torch.Tensor:
-    """Apply the paper-style resize and random padding while preserving shape."""
-    if torch.rand((), device=x.device) >= probability:
-        return x
-    height, width = x.shape[-2:]
-    fraction = torch.empty((), device=x.device).uniform_(
-        resize_min_fraction, resize_max_fraction
-    )
-    resized_height = max(1, int(round(height * float(fraction))))
-    resized_width = max(1, int(round(width * float(fraction))))
+def _diverse_input(image, probability, min_scale, generator):
+    if probability == 0 or _random_value(generator, image.device) >= probability:
+        return image
+    height, width = image.shape[-2:]
+    scale = min_scale + (1.0 - min_scale) * _random_value(generator, image.device)
+    resized_height = max(2, round(height * scale))
+    resized_width = max(2, round(width * scale))
     resized = F.interpolate(
-        x, size=(resized_height, resized_width), mode="bilinear", align_corners=False
+        image,
+        size=(resized_height, resized_width),
+        mode="bilinear",
+        align_corners=False,
+        antialias=True,
     )
     pad_height = height - resized_height
     pad_width = width - resized_width
-    top = int(torch.randint(0, pad_height + 1, (), device=x.device))
-    left = int(torch.randint(0, pad_width + 1, (), device=x.device))
-    return F.pad(resized, (left, pad_width - left, top, pad_height - top))
+    top = int(
+        torch.randint(pad_height + 1, (), generator=generator, device=image.device)
+    )
+    left = int(
+        torch.randint(pad_width + 1, (), generator=generator, device=image.device)
+    )
+    return F.pad(
+        resized,
+        (left, pad_width - left, top, pad_height - top),
+        mode="constant",
+        value=0.0,
+    )
+
+
+def _eot_view(image, transform):
+    height, width = image.shape[-2:]
+    if transform == "identity":
+        return image
+    if transform == "resize":
+        small = F.interpolate(
+            image,
+            size=(max(2, round(height * 0.9)), max(2, round(width * 0.9))),
+            mode="bilinear",
+            align_corners=False,
+            antialias=True,
+        )
+        return F.interpolate(
+            small,
+            size=(height, width),
+            mode="bilinear",
+            align_corners=False,
+            antialias=True,
+        )
+    if transform == "crop":
+        margin_h = max(1, height // 20)
+        margin_w = max(1, width // 20)
+        cropped = image[..., margin_h:-margin_h, margin_w:-margin_w]
+        return F.interpolate(
+            cropped,
+            size=(height, width),
+            mode="bilinear",
+            align_corners=False,
+            antialias=True,
+        )
+    if transform == "jpeg_like":
+        quantized = torch.round(image * 63.0) / 63.0
+        return image + (quantized - image).detach()
+    raise ValueError(f"unsupported EoT transform: {transform}")
 
 
 def attack(
     image,
     classifiers,
     device,
+    *,
     epsilon=8 / 255,
     step_size=None,
-    iterations=10,
+    iterations=20,
     momentum=1.0,
-    input_diversity_probability=0.5,
-    resize_min_fraction=0.9,
-    resize_max_fraction=1.0,
-    padding="random",
-    source_model="vit_b_16",
-    target_class=0,
+    diversity_probability=0.7,
+    min_resize_fraction=0.9,
+    eot_samples=1,
+    eot_transforms=("identity",),
+    objective="targeted_fake_to_real",
+    label=None,
+    source_weights=None,
+    seed=0,
 ):
-    if source_model not in ATTACK_CONTRACT["supported_source_models"]:
-        raise ValueError(f"mi_di_fgsm does not support source_model={source_model!r}")
-    if target_class not in {0, 1}:
-        raise ValueError("target_class must be 0 or 1")
-    if epsilon <= 0 or iterations < 1:
-        raise ValueError("epsilon and iterations must be positive")
     if step_size is None:
-        step_size = epsilon / iterations
-    if step_size <= 0 or momentum < 0:
-        raise ValueError("step_size must be positive and momentum non-negative")
-    if not 0 <= input_diversity_probability <= 1:
-        raise ValueError("input_diversity_probability must be in [0, 1]")
-    if not 0 < resize_min_fraction <= resize_max_fraction <= 1:
-        raise ValueError("resize fractions must satisfy 0 < min <= max <= 1")
-    if padding != "random":
-        raise ValueError("padding must be 'random'")
+        step_size = float(epsilon) / iterations
+    validate_steps(epsilon, step_size, iterations)
+    if momentum < 0:
+        raise ValueError("momentum must be non-negative")
+    if not 0 <= diversity_probability <= 1:
+        raise ValueError("diversity_probability must be in [0, 1]")
+    if not 0 < min_resize_fraction <= 1:
+        raise ValueError("min_resize_fraction must be in (0, 1]")
+    if not isinstance(eot_samples, int) or eot_samples < 1:
+        raise ValueError("eot_samples must be a positive integer")
+    if not eot_transforms:
+        raise ValueError("eot_transforms must not be empty")
 
-    model = classifiers[source_model]["model"]
-    original = from_uint8_image(image, device)
+    original = image_to_tensor(image, device)
     attacked = original.clone()
-    accumulated = torch.zeros_like(original)
-    target = torch.tensor([target_class], device=device)
-
-    for _ in range(iterations):
-        attacked.requires_grad_()
-        diverse = _diverse_input(
-            attacked, input_diversity_probability, resize_min_fraction, resize_max_fraction
-        )
-        loss = F.cross_entropy(model(preprocess_for(source_model, diverse)), target)
-        gradient = torch.autograd.grad(loss, attacked)[0]
-        if not torch.isfinite(gradient).all():
-            raise RuntimeError("MI-DI-FGSM encountered a non-finite gradient")
-        normalized = gradient / (gradient.abs().mean(dim=(1, 2, 3), keepdim=True) + 1e-12)
-        accumulated = momentum * accumulated + normalized
-        attacked = project_linf(attacked - step_size * accumulated.sign(), original, epsilon).detach()
-
-    return to_uint8_image(attacked)
+    velocity = torch.zeros_like(attacked)
+    generator = make_generator(device, seed)
+    for iteration in range(iterations):
+        attacked.requires_grad_(True)
+        loss = attacked.new_zeros(())
+        for sample in range(eot_samples):
+            view = _diverse_input(
+                attacked,
+                diversity_probability,
+                min_resize_fraction,
+                generator,
+            )
+            transform = eot_transforms[
+                (iteration * eot_samples + sample) % len(eot_transforms)
+            ]
+            loss = loss + ensemble_loss(
+                _eot_view(view, transform),
+                classifiers,
+                objective,
+                label,
+                source_weights,
+            )
+        gradient = checked_gradient(loss / eot_samples, attacked, "MI-DI-FGSM")
+        normalized = gradient / gradient.abs().mean(
+            dim=(1, 2, 3), keepdim=True
+        ).clamp_min(1e-12)
+        velocity = float(momentum) * velocity + normalized
+        attacked = project_linf(
+            attacked - float(step_size) * velocity.sign(), original, epsilon
+        ).detach()
+    return tensor_to_image(attacked)

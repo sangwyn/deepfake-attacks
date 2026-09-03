@@ -1,5 +1,6 @@
-"""No-op attack used to verify the evaluation pipeline."""
+"""No-op attack used for pipeline validation."""
 
 
-def attack(image, classifiers, device):
+def attack(image, classifiers, device, **parameters):
+    del classifiers, device, parameters
     return image.copy()

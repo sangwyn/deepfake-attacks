@@ -1,36 +1,22 @@
 {
   "created_at": "2026-09-02T10:08:17+00:00",
-  "dataset_root_recorded_for_audit": "/home/aiattacks/dataset/celebA",
+  "dataset_root_recorded_for_audit": "/home/aiattacks/dataset/celebA/TEST",
   "entries": [
     {
       "class_name": "TEST_FAKE",
       "count": 100,
       "label": 1,
       "manifest": "test_fake.jsonl",
-      "manifest_sha256": "cee6c571063ef2d7550079d37f78100b1d5feb41d7cf31d39d3684752319d0ff"
+      "manifest_sha256": "cf66f11ae26a5621a5e1287797f292016c5e362f7ccda6198e3abfdac4349f09"
     },
     {
       "class_name": "TEST_REAL",
       "count": 100,
       "label": 0,
       "manifest": "test_real.jsonl",
-      "manifest_sha256": "bdae75d3b7fcaa817ba5fdb623b3251229086517590079d8f758006667dc8dcf"
-    },
-    {
-      "class_name": "TRAIN_FAKE",
-      "count": 1500,
-      "label": 1,
-      "manifest": "train_fake.jsonl",
-      "manifest_sha256": "f6ea1ee1362f58e66c68f8a1f32534ffbd0356a3dbd4264550d573208e0c92ed"
-    },
-    {
-      "class_name": "TRAIN_REAL",
-      "count": 1500,
-      "label": 0,
-      "manifest": "train_real.jsonl",
-      "manifest_sha256": "fa6ab4173cfaf38d30cd559a176659808fb3f0377ee5e4e7e5e1ec128e8663a9"
+      "manifest_sha256": "b9c7d063b4e6a2f06d65c689502ba405bd293a0817facfa9beeaa5734c3acadc"
     }
   ],
   "schema_version": 1,
-  "total_count": 3200
+  "total_count": 200
 }

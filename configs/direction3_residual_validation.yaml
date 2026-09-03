@@ -1,9 +1,0 @@
-models_dir: /home/aiattacks/pengyang/deepfake-attacks/weights
-split_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/data_split_seed0.json
-universal_checkpoint: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/universal_additive_seed0.pt
-output_json: /home/aiattacks/pengyang/deepfake-attacks/experiments/direction3/residual_heldout_corrected_seed0.json
-split: held_out
-residual_epsilon: 0.00784313725490196
-step_size: 0.00196078431372549
-iterations: 10
-batch_size: 2

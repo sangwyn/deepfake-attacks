@@ -24,6 +24,31 @@ def _label_from_path(path: Path, dataset_root: Path) -> int:
     return CLASS_DIRECTORIES[relative.parts[0]]
 
 
+def discover_test_samples(dataset_root: Path) -> list[dict]:
+    """Discover a TEST tree deterministically, deriving labels from folders only."""
+    dataset_root = dataset_root.resolve()
+    if not dataset_root.is_dir():
+        raise FileNotFoundError(f"Dataset root not found: {dataset_root}")
+    samples = []
+    for class_directory, label in CLASS_DIRECTORIES.items():
+        class_root = dataset_root / class_directory
+        if not class_root.is_dir():
+            raise FileNotFoundError(f"Required class directory not found: {class_root}")
+        for path in sorted(class_root.rglob("*")):
+            if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS:
+                relative = path.relative_to(dataset_root)
+                samples.append(
+                    {
+                        "sample_id": relative.as_posix(),
+                        "path": path,
+                        "label": label,
+                    }
+                )
+    if not samples:
+        raise RuntimeError(f"No images found under: {dataset_root}")
+    return sorted(samples, key=lambda sample: sample["sample_id"])
+
+
 def load_test_manifest(manifest_path: Path, dataset_root: Path) -> list[dict]:
     manifest_path = manifest_path.resolve()
     dataset_root = dataset_root.resolve()

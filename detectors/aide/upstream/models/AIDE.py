@@ -1,7 +1,5 @@
 import torch.nn as nn
-import torch.utils.model_zoo as model_zoo
 import torch
-import clip
 import open_clip
 from .srm_filter_kernel import all_normalized_hpf_list
 import numpy as np
@@ -227,7 +225,6 @@ class AIDE_Model(nn.Module):
         
         self.fc = Mlp(2048 + 256 , 1024, 2)
 
-        print("build model with convnext_xxl")
         self.openclip_convnext_xxl, _, _ = open_clip.create_model_and_transforms(
             "convnext_xxlarge", pretrained=convnext_path
         )
@@ -263,21 +260,23 @@ class AIDE_Model(nn.Module):
         x_minmin1 = self.hpf(x_minmin1)
         x_maxmax1 = self.hpf(x_maxmax1)
 
-        with torch.no_grad():
-            
-            clip_mean = torch.Tensor([0.48145466, 0.4578275, 0.40821073])
-            clip_mean = clip_mean.to(tokens, non_blocking=True).view(3, 1, 1)
-            clip_std = torch.Tensor([0.26862954, 0.26130258, 0.27577711])
-            clip_std = clip_std.to(tokens, non_blocking=True).view(3, 1, 1)
-            dinov2_mean = torch.Tensor([0.485, 0.456, 0.406]).to(tokens, non_blocking=True).view(3, 1, 1)
-            dinov2_std = torch.Tensor([0.229, 0.224, 0.225]).to(tokens, non_blocking=True).view(3, 1, 1)
-
-            local_convnext_image_feats = self.openclip_convnext_xxl(
-                tokens * (dinov2_std / clip_std) + (dinov2_mean - clip_mean) / clip_std
-            ) #[b, 3072, 8, 8]
-            assert local_convnext_image_feats.size()[1:] == (3072, 8, 8)
-            local_convnext_image_feats = self.avgpool(local_convnext_image_feats).view(tokens.size(0), -1)
-            x_0 = self.convnext_proj(local_convnext_image_feats)
+        clip_mean = tokens.new_tensor([0.48145466, 0.4578275, 0.40821073]).view(3, 1, 1)
+        clip_std = tokens.new_tensor([0.26862954, 0.26130258, 0.27577711]).view(3, 1, 1)
+        imagenet_mean = tokens.new_tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+        imagenet_std = tokens.new_tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        local_convnext_image_feats = self.openclip_convnext_xxl(
+            tokens * (imagenet_std / clip_std)
+            + (imagenet_mean - clip_mean) / clip_std
+        )
+        if local_convnext_image_feats.shape[1:] != (3072, 8, 8):
+            raise RuntimeError(
+                "AIDE ConvNeXt returned unexpected shape "
+                f"{tuple(local_convnext_image_feats.shape)}"
+            )
+        local_convnext_image_feats = self.avgpool(
+            local_convnext_image_feats
+        ).view(tokens.size(0), -1)
+        x_0 = self.convnext_proj(local_convnext_image_feats)
 
         x_min = self.model_min(x_minmin)
         x_max = self.model_max(x_maxmax)

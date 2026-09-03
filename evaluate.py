@@ -1,671 +1,528 @@
-"""
-evaluate.py — Adversarial Robustness Evaluation
-=================================================
-Evaluates the robustness of image-classification models against adversarial
-versions of a given image set.  For every original / adversarial image pair:
-
-1. Computes visual similarity (SSIM + LPIPS).
-2. Runs each classifier on the adversarial image.
-3. Flags successful attacks (prediction == "Real" class).
-4. Aggregates a weighted score across classifiers and pairs.
-
-Supported classifiers
----------------------
-  vit_b_16        : Vision Transformer B/16  (spatial, 224×224)
-  densenet121_dct : DenseNet-121 in DCT space (1-channel, 128×128)
-  npr             : NPR ResNet-50 (spatial residual, 224×224)
-  aide            : AIDE high-pass + ConvNeXt detector (five-view, 256×256)
-
-YAML configuration (WHAT YOU MUST PROVIDE)
--------------------------------
-  original_root  : path to orignal Test 
-  manifest       : optional immutable JSONL TEST manifest
-  attack         : attack module name from the attacks folder
-  attack_params  : optional dict of kwargs forwarded to the attack's attack()
-  save_attacked_dir : optional directory for attacked images
-                      (when set, images are scored after save+reload)
-  models_dir     : folder containing <model_name>.pth weight files
-  source_classifiers : detector names used to generate attacks
-  target_classifiers : detector names used to evaluate attacks
-  objective      : targeted_fake_to_real | untargeted
-  attack_params  : attack-specific parameters recorded in the config
-  device         : "auto" | "cpu" | "cuda"
-  metric_device  : optional LPIPS device (default "cpu" to preserve attack GPU memory)
-  save_json      : path to write a JSON report
-
-YAML configuration (WHAT YOU MUST LEAVE UNCHANGED) -----> the results will be evaluated based on these settings
--------------------------------
-  dct_log_scale  : bool — log-scale the DCT coefficients
-  weights        : per-classifier score weight (default 1.0)
-  aggregate      : "sum"
-  alpha          : weight for SSIM vs (1-LPIPS) in the similarity score
-
-
-Dependencies
--------------------------------
-  Python       == 3.11.11
-  numpy        == 1.26.4
-  PyYAML       == 6.0.2
-  Pillow       == 11.0.0
-  scipy        == 1.15.3
-  scikit-image == 0.26.0
-  tqdm         == 4.67.1
-  torch        == 2.3.0+cu118
-  torchvision  == 0.18.0+cu118
-  lpips        == 0.1.4
-
-GPU acceleration is automatic if CUDA is available and `device: auto`
-in the YAML; otherwise CPU is used.
-
-Usage
------
-  1. Install the dependencies (e.g. via pip)
-  2. Prepare only these directories in the config:
-        - original_root: with the original AADD_2026_Test images
-        - attack: attack module name from the attacks folder
-        - save_attacked_dir: where to optionally save attacked images
-        - models_dir: with the .pth weight files
-        - save_json: where you want the results JSON to be written
-  3. Run the evaluation:
-  python evaluate.py --config configs/AADD_2026_config.yaml
-"""
+"""Canonical adversarial-attack runner for the four submitted detectors."""
 
 import argparse
 import hashlib
-from importlib import import_module
-import inspect
 import json
+import platform
+import random
 import time
-import warnings
+from importlib import import_module, metadata
 from pathlib import Path
 
 import numpy as np
+import torch
+import torchvision.transforms as T
 import yaml
 from PIL import Image
-from scipy.fftpack import dct as scipy_dct
-from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import structural_similarity
 from tqdm import tqdm
 
-import torch
-import torch.nn as nn
-import torchvision.transforms as T
-from torchvision import models as tv_models
-
+from attacks import AVAILABLE_ATTACKS
 from detectors import SUPPORTED_DETECTORS, load_detector
-from manifests import IMAGE_EXTENSIONS, load_test_manifest
+from manifests import discover_test_samples, load_test_manifest
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
+
 CLASS_IDX_REAL = 0
-CLASSES        = 2
-IMAGE_EXTS     = IMAGE_EXTENSIONS
-SUPPORTED      = SUPPORTED_DETECTORS
+CLASS_IDX_FAKE = 1
+SUPPORTED = SUPPORTED_DETECTORS
+PATH_KEYS = (
+    "original_root",
+    "manifest",
+    "models_dir",
+    "save_attacked_dir",
+    "reuse_attacked_dir",
+    "save_json",
+)
 
 
-# ============================================================================
-# MODEL FACTORIES  — must match train.py exactly
-# ============================================================================
-
-def _create_densenet121_dct() -> nn.Module:
-    """
-    DenseNet-121 with 1-channel input for DCT features.
-    """
-    model = tv_models.densenet121(weights=None)
-    model.features.conv0 = nn.Conv2d(
-        1, 64, kernel_size=7, stride=2, padding=3, bias=False
-    )
-    model.classifier = nn.Sequential(
-        nn.Dropout(0.2),
-        nn.Linear(model.classifier.in_features, CLASSES)
-    )
-    return model
+def _file_sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
-def load_model(name: str, weight_path: Path, device: torch.device) -> nn.Module:
-    print(f"[MODEL] Loading '{name}' from {weight_path} …")
-    model = load_detector(name, weight_path, device).model
-    print(f"[MODEL] '{name}' ready on {device}\n")
-    return model
-
-
-# ============================================================================
-# TRANSFORMS
-# ============================================================================
-
-def _dct2(np_img: np.ndarray) -> np.ndarray:
-    return scipy_dct(scipy_dct(np_img, axis=0, norm='ortho'), axis=1, norm='ortho')
-
-
-def build_dct_transform(log_scale: bool = True):
-    """
-    Grayscale → resize 256 → center-crop 128 → DCT → (optional) log-scale.
-    Returns a callable: PIL Image → 1×128×128 tensor.
-    """
-    def _transform(pil_img: Image.Image) -> torch.Tensor:
-        img = pil_img.convert('L')
-        # Always create the 256x256 canvas expected by the checkpoint.
-        if img.size != (256, 256):
-            img = img.resize((256, 256), Image.Resampling.LANCZOS)
-        w, h  = img.size
-        left  = (w - 128) // 2
-        top   = (h - 128) // 2
-        img   = img.crop((left, top, left + 128, top + 128))
-        arr   = np.array(img, dtype=np.float32)
-        dct_a = _dct2(arr)
-        if log_scale:
-            dct_a = np.log(np.abs(dct_a) + 1e-6)
-        return torch.from_numpy(dct_a).unsqueeze(0)   # 1×128×128
-    return _transform
-
-
-def build_spatial_transform(model_name: str) -> T.Compose:
-    """
-    Standard ImageNet-normalised spatial transform.
-    vit_b_16 uses 224×224 (CenterCrop); others use 256×256.
-    """
-    if model_name in {'vit_b_16', 'npr'}:
-        return T.Compose([
-            T.Resize((256, 256)),
-            T.CenterCrop((224, 224)),
-            T.ToTensor(),
-            T.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225]),
-        ])
-    return T.Compose([
-        T.Resize((256, 256)),
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225]),
-    ])
-
-
-def build_aide_transform(model: nn.Module, device: torch.device):
-    """PIL RGB -> the five-branch tensor expected by the AIDE model."""
-    from detectors.aide.adapter import AIDEAdapter
-    adapter = AIDEAdapter(model, device)
-
-    def _transform(pil_img: Image.Image) -> torch.Tensor:
-        image = T.ToTensor()(pil_img).unsqueeze(0).to(device)
-        return adapter(image)[0]
-
-    return _transform
-
-
-class _NPRLogitModel(nn.Module):
-    """Expose the scalar NPR score as [Real, Fake] logits."""
-
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
-
-    def forward(self, image):
-        score = self.model(image)
-        # The verified NPR checkpoint produces positive scores for Fake.
-        return torch.cat((-score, score), dim=1)
-
-
-class _AIDELogitModel(nn.Module):
-    """Map the upstream AIDE output ordering to [Real, Fake]."""
-
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
-
-    def forward(self, image):
-        logits = self.model(image)
-        # The upstream wrapper maps its second-class probability above 0.5
-        # to Real, so swap the raw output into the shared [Real, Fake] order.
-        return logits[:, [1, 0]]
-
-
-# ============================================================================
-# SIMILARITY METRICS
-# ============================================================================
-
-def pil_to_np_rgb(path: Path) -> np.ndarray:
-    return np.array(Image.open(path).convert('RGB'))
-
-
-def compute_ssim_rgb(im1: np.ndarray, im2: np.ndarray) -> float:
-    """Mean SSIM over the three RGB channels."""
-    return sum(
-        ssim(im1[..., c], im2[..., c], data_range=255)
-        for c in range(3)
-    ) / 3.0
-
-
-def np_to_lpips_tensor(np_img: np.ndarray,
-                        device: torch.device) -> torch.Tensor:
-    """HWC uint8 → 1×3×H×W float in [-1, 1] (LPIPS convention)."""
-    t = torch.from_numpy(np_img).permute(2, 0, 1).float() / 127.5 - 1.0
-    return t.unsqueeze(0).to(device)
-
-
-def np_to_detector_tensor(np_img: np.ndarray,
-                          device: torch.device) -> torch.Tensor:
-    """HWC uint8 → 1×3×H×W float in [0, 1]."""
-    tensor = torch.from_numpy(np_img).permute(2, 0, 1).unsqueeze(0)
-    return tensor.to(device=device, dtype=torch.float32).div_(255.0)
-
-
-# ============================================================================
-# CONFIG HELPERS
-# ============================================================================
-
-def load_cfg(cfg_path: str) -> dict:
+def load_cfg(cfg_path):
+    """Load YAML and resolve every filesystem path relative to that YAML file."""
     path = Path(cfg_path).resolve()
-    with path.open() as f:
-        cfg = yaml.safe_load(f)
-    cfg['_config_path'] = str(path)
-    cfg['_config_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
-    print(f"[CONFIG] Loaded from {cfg_path}")
+    with path.open(encoding="utf-8") as stream:
+        cfg = yaml.safe_load(stream)
+    if not isinstance(cfg, dict):
+        raise ValueError("Configuration must be a YAML mapping")
+    base = path.parent
+    for key in PATH_KEYS:
+        value = cfg.get(key)
+        if value is not None:
+            candidate = Path(value)
+            resolved = (
+                candidate.resolve()
+                if candidate.is_absolute()
+                else (base / candidate).resolve()
+            )
+            cfg[key] = str(resolved)
+    cfg["_config_path"] = str(path)
+    cfg["_config_sha256"] = _file_sha256(path)
     return cfg
 
 
-def get_device(choice: str) -> torch.device:
-    if choice == 'auto':
-        dev = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    else:
-        dev = torch.device(choice)
-    print(f"[DEVICE] {dev}")
-    return dev
+def get_device(choice):
+    if choice == "auto":
+        return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device(choice)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested but is unavailable")
+    return device
 
 
-def get_metric_device(choice: str = 'cpu') -> torch.device:
-    if choice not in {'cpu', 'cuda', 'cuda:0'}:
-        raise ValueError("metric_device must be 'cpu', 'cuda', or 'cuda:0'")
-    if choice.startswith('cuda') and not torch.cuda.is_available():
-        raise RuntimeError("metric_device requests CUDA, but CUDA is unavailable")
-    return torch.device(choice)
+def get_metric_device(choice="cpu"):
+    return get_device(choice)
 
 
-def resolve_experiment_models(cfg: dict) -> tuple[list[str], list[str], list[str]]:
-    target_names = cfg.get('target_classifiers', cfg.get('classifiers'))
-    if not isinstance(target_names, list) or not target_names:
-        raise ValueError("Configure target_classifiers as a non-empty list")
-    source_names = cfg.get('source_classifiers', target_names)
-    if not isinstance(source_names, list) or not source_names:
-        raise ValueError("Configure source_classifiers as a non-empty list")
+def configure_reproducibility(seed):
+    if not isinstance(seed, int):
+        raise TypeError("seed must be an integer")
+    random.seed(seed)
+    np.random.seed(seed % (2**32))
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
+
+def environment_versions():
+    versions = {"python": platform.python_version()}
+    for distribution in (
+        "numpy",
+        "PyYAML",
+        "Pillow",
+        "scipy",
+        "scikit-image",
+        "tqdm",
+        "torch",
+        "torchvision",
+        "lpips",
+        "open-clip-torch",
+    ):
+        try:
+            versions[distribution] = metadata.version(distribution)
+        except metadata.PackageNotFoundError:
+            versions[distribution] = None
+    return versions
+
+
+def resolve_experiment_models(cfg):
+    target_names = cfg.get("target_classifiers", cfg.get("classifiers"))
+    source_names = cfg.get("source_classifiers", target_names)
+    for field, names in (
+        ("source_classifiers", source_names),
+        ("target_classifiers", target_names),
+    ):
+        if (
+            not isinstance(names, list)
+            or not names
+            or not all(isinstance(x, str) for x in names)
+        ):
+            raise ValueError(f"{field} must be a non-empty list of detector names")
+        if len(names) != len(set(names)):
+            raise ValueError(f"{field} contains duplicate detector names")
     unknown = (set(source_names) | set(target_names)) - SUPPORTED
     if unknown:
         raise ValueError(
-            f"Unsupported classifier(s) {sorted(unknown)}; "
-            f"supported: {sorted(SUPPORTED)}"
+            f"Unsupported detectors {sorted(unknown)}; choose from {sorted(SUPPORTED)}"
         )
-    active_source_names = [] if cfg.get('reuse_attacked_dir') else source_names
-    loaded_names = list(dict.fromkeys([*active_source_names, *target_names]))
+    active_sources = [] if cfg.get("reuse_attacked_dir") else source_names
+    loaded_names = list(dict.fromkeys([*active_sources, *target_names]))
     return source_names, target_names, loaded_names
 
 
-# ============================================================================
-# MAIN EVALUATION
-# ============================================================================
-
-def predict_np(pack: dict, np_img: np.ndarray, device: torch.device) -> int:
-    """Class prediction of one detector on an H×W×3 uint8 RGB image."""
-    tensor = pack['transform'](Image.fromarray(np_img)).unsqueeze(0).to(device)
-    with torch.no_grad():
-        return int(pack['model'](tensor).argmax(1).item())
+def load_attack(name):
+    if name not in AVAILABLE_ATTACKS:
+        raise ValueError(f"Unknown attack {name!r}; choose from {AVAILABLE_ATTACKS}")
+    function = import_module(f"attacks.{name}").attack
+    if not callable(function):
+        raise TypeError(f"attacks.{name}.attack is not callable")
+    return function
 
 
-def evaluate(cfg: dict):
-    import lpips
+def load_model(name, weight_path, device):
+    """Compatibility helper returning the frozen raw model."""
+    return load_detector(name, weight_path, device).model
 
-    started_at = time.perf_counter()
-    device    = get_device(cfg.get('device', 'auto'))
-    metric_device = get_metric_device(cfg.get('metric_device', 'cpu'))
-    print(f"[METRICS] LPIPS device: {metric_device}")
-    log_scale = bool(cfg.get('dct_log_scale', True))
-    alpha     = float(cfg.get('alpha', 0.5))
-    save_attacked_dir = cfg['save_attacked_dir']
-    reuse_attacked_dir = cfg.get('reuse_attacked_dir')
-    if reuse_attacked_dir is not None and not isinstance(reuse_attacked_dir, str):
-        raise ValueError("reuse_attacked_dir must be a path string or null")
-    if reuse_attacked_dir and save_attacked_dir:
-        raise ValueError(
-            "A reuse config cannot also declare save_attacked_dir"
-        )
-    source_names, target_names, clf_names = resolve_experiment_models(cfg)
-    attack_fn = (
-        None if reuse_attacked_dir
-        else import_module(f"attacks.{cfg['attack']}").attack
+
+def build_spatial_transform(model_name):
+    if model_name not in {"vit_b_16", "npr"}:
+        raise ValueError("spatial transform is defined for vit_b_16 and npr")
+    return T.Compose(
+        [
+            T.Resize((256, 256)),
+            T.CenterCrop((224, 224)),
+            T.ToTensor(),
+            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
     )
 
-    # ── LPIPS perceptual similarity ──────────────────────────────────────
-    lpips_fn = lpips.LPIPS(net='alex').to(metric_device)
-    lpips_fn.eval()
 
-    # ── Per-classifier weights from YAML (default 1.0) ───────────────────
-    weight_cfg: dict = cfg.get('weights', {})
+def build_dct_transform(log_scale=True):
+    """Return the same RGB-to-DCT transform used by the differentiable adapter."""
+    from detectors.registry import DetectorAdapter
 
-    # ── Load classifiers ─────────────────────────────────────────────────
-    models_dir = Path(cfg['models_dir'])
-    classifiers = {}
-    architecture_root = cfg.get('architecture_root')
+    adapter = DetectorAdapter("densenet121_dct", torch.nn.Identity(), log_dct=log_scale)
 
-    for name in clf_names:
-        w_path = models_dir / f"{name}.pth"
-        if not w_path.exists():
-            raise FileNotFoundError(
-                f"Weight file for '{name}' not found: {w_path}"
-            )
-        raw_model = load_model(name, w_path, device)
-        if name == 'aide':
-            transform = build_aide_transform(raw_model, device)
-            model = _AIDELogitModel(raw_model).eval().to(device)
-        elif name == 'npr':
-            transform = build_spatial_transform(name)
-            model = _NPRLogitModel(raw_model).eval().to(device)
-        else:
-            transform = (build_dct_transform(log_scale)
-                         if name.endswith('_dct')
-                         else build_spatial_transform(name))
-            model = raw_model
+    def transform(image):
+        tensor = T.ToTensor()(image.convert("RGB")).unsqueeze(0)
+        return adapter._dct_input(tensor)[0]
 
-        print(f"[MODEL] Loading '{name}' from {w_path} …")
-        adapter = load_detector(
-            name,
-            w_path,
-            device,
-            log_dct=log_scale,
-            architecture_root=(Path(architecture_root)
-                               if architecture_root else None),
-        )
-        classifiers[name] = {
-            'model':      adapter.model,
-            'adapter':    adapter,
-            'transform':  transform,
-            'clf_weight': float(weight_cfg.get(name, 1.0)),
-            'indicators': [],
-            'clean_indicators': [],
-            'ssim_vals':  [],
-            'lpips_vals': [],
-            'eligible':   [],
-            'successes':  [],
-            'clean_ok':   [],
-            'adv_ok':     [],
-        }
-        print(f"[MODEL] '{name}' ready on {device}\n")
+    return transform
 
-    # Initialize LPIPS only after configuration and checkpoint validation.
-    lpips_fn = lpips.LPIPS(net='alex').to(device)
-    lpips_fn.eval()
 
-    print(f"[SETUP] {len(classifiers)} classifier(s) loaded\n")
-    for n, p in classifiers.items():
-        print(f"  {n:<22s}  clf_weight={p['clf_weight']:.2f}")
-    print()
+def pil_to_np_rgb(path):
+    with Image.open(path) as image:
+        return np.asarray(image.convert("RGB"), dtype=np.uint8)
 
-    # ── Collect image pairs ───────────────────────────────────────────────
-    original_root = Path(cfg['original_root']).resolve()
-    manifest_path = cfg.get('manifest')
-    if manifest_path:
-        samples = load_test_manifest(Path(manifest_path), original_root)
-    else:
-        samples = [
-            {'sample_id': str(path.relative_to(original_root)),
-             'path': path, 'label': None}
-            for path in original_root.rglob('*')
-            if path.is_file() and path.suffix.lower() in IMAGE_EXTS
-        ]
-    include_labels = cfg.get('include_labels')
+
+def compute_ssim_rgb(original, attacked):
+    if original.shape != attacked.shape:
+        raise ValueError("SSIM inputs must have identical shapes")
+    return float(
+        structural_similarity(original, attacked, channel_axis=2, data_range=255)
+    )
+
+
+def np_to_lpips_tensor(image, device):
+    tensor = torch.from_numpy(image.copy()).permute(2, 0, 1).float()
+    return tensor.unsqueeze(0).to(device).div_(127.5).sub_(1.0)
+
+
+def np_to_detector_tensor(image, device):
+    tensor = torch.from_numpy(image.copy()).permute(2, 0, 1).unsqueeze(0)
+    return tensor.to(device=device, dtype=torch.float32).div_(255.0)
+
+
+def build_lpips_metric(device):
+    try:
+        import lpips
+    except ImportError as exc:
+        raise ImportError("LPIPS is required; install requirements.txt") from exc
+    return lpips.LPIPS(net="alex").eval().to(device)
+
+
+def predict_np(pack, image, device):
+    with torch.no_grad():
+        logits = pack["adapter"](np_to_detector_tensor(image, device))
+    return int(logits.argmax(dim=1).item())
+
+
+def _collect_samples(cfg):
+    root = Path(cfg["original_root"]).resolve()
+    manifest = cfg.get("manifest")
+    samples = (
+        load_test_manifest(Path(manifest), root)
+        if manifest
+        else discover_test_samples(root)
+    )
+    include_labels = cfg.get("include_labels")
     if include_labels is not None:
-        include_labels = set(include_labels)
-        samples = [sample for sample in samples
-                   if sample['label'] in include_labels]
+        if not isinstance(include_labels, list) or not set(include_labels) <= {0, 1}:
+            raise ValueError("include_labels must be a list containing only 0 and/or 1")
+        allowed = set(include_labels)
+        samples = [sample for sample in samples if sample["label"] in allowed]
+    sample_limit = cfg.get("sample_limit")
+    if sample_limit is not None:
+        if not isinstance(sample_limit, int) or sample_limit < 1:
+            raise ValueError("sample_limit must be a positive integer or null")
+        samples = samples[:sample_limit]
     if not samples:
-        raise RuntimeError(f"No images found under: {original_root}")
-    print(f"[DATA] {len(samples)} original image(s) found\n")
+        raise RuntimeError("No samples remain after applying the configured filters")
+    output_paths = [
+        sample["path"].relative_to(root).with_suffix(".png") for sample in samples
+    ]
+    if len(output_paths) != len(set(output_paths)):
+        raise ValueError("Sample names collide after conversion to lossless PNG output")
+    return root, samples
 
-    running_sum = 0.0
-    total_pairs = 0
-    sample_records = []
-    l2_values = []
-    linf_values = []
-    objective = cfg.get('objective', 'targeted_fake_to_real')
-    attack_params = dict(cfg.get('attack_params', {}))
-    attack_classifiers = {
-        name: classifiers[name] for name in source_names if name in classifiers
+
+def _validate_attack_output(attacked, original):
+    if not isinstance(attacked, np.ndarray):
+        raise TypeError("attack() must return a numpy array")
+    if attacked.dtype != np.uint8:
+        raise TypeError("attack() must return uint8 pixels")
+    if attacked.shape != original.shape:
+        raise ValueError(
+            f"attack() changed image shape from {original.shape} to {attacked.shape}"
+        )
+
+
+def _adversarial_relative_path(relative_path):
+    return relative_path.with_suffix(".png")
+
+
+def _success(objective, label, prediction):
+    if objective == "targeted_fake_to_real":
+        return prediction == CLASS_IDX_REAL
+    return prediction != label
+
+
+def _validate_configuration(cfg, samples, source_names, target_names):
+    objective = cfg.get("objective", "targeted_fake_to_real")
+    if objective not in {"targeted_fake_to_real", "untargeted"}:
+        raise ValueError("objective must be targeted_fake_to_real or untargeted")
+    if objective == "targeted_fake_to_real" and any(
+        sample["label"] != CLASS_IDX_FAKE for sample in samples
+    ):
+        raise ValueError("targeted_fake_to_real may evaluate TEST_FAKE samples only")
+    alpha = float(cfg.get("alpha", 0.5))
+    if not 0 <= alpha <= 1:
+        raise ValueError("alpha must be in [0, 1]")
+    aggregate = cfg.get("aggregate", "sum")
+    if aggregate not in {"sum", "mean"}:
+        raise ValueError("aggregate must be sum or mean")
+    attack_params = cfg.get("attack_params", {})
+    if not isinstance(attack_params, dict):
+        raise ValueError("attack_params must be a mapping")
+    if cfg.get("reuse_attacked_dir") and cfg.get("save_attacked_dir"):
+        raise ValueError(
+            "reuse_attacked_dir and save_attacked_dir are mutually exclusive"
+        )
+    if not cfg.get("reuse_attacked_dir") and not source_names:
+        raise ValueError("attack generation requires at least one source detector")
+    weights = cfg.get("weights", {})
+    if not isinstance(weights, dict):
+        raise ValueError("weights must be a mapping")
+    values = [float(weights.get(name, 1.0)) for name in target_names]
+    if any(value < 0 for value in values) or sum(values) <= 0:
+        raise ValueError(
+            "target detector weights must be non-negative and not all zero"
+        )
+    return objective, alpha, aggregate, attack_params, weights
+
+
+def evaluate(cfg):
+    """Generate adversarial images, score every target, and return a JSON-ready report."""
+    started = time.perf_counter()
+    required = ("original_root", "models_dir")
+    missing = [key for key in required if not cfg.get(key)]
+    if missing:
+        raise ValueError(f"Missing required configuration fields: {missing}")
+
+    source_names, target_names, loaded_names = resolve_experiment_models(cfg)
+    dataset_root, samples = _collect_samples(cfg)
+    objective, alpha, aggregate, attack_params, weight_cfg = _validate_configuration(
+        cfg, samples, source_names, target_names
+    )
+    reuse_root = (
+        Path(cfg["reuse_attacked_dir"]) if cfg.get("reuse_attacked_dir") else None
+    )
+    save_root = Path(cfg["save_attacked_dir"]) if cfg.get("save_attacked_dir") else None
+    attack_function = (
+        None if reuse_root is not None else load_attack(cfg.get("attack", "identity"))
+    )
+    if reuse_root is not None and not reuse_root.is_dir():
+        raise FileNotFoundError(f"Reused adversarial directory not found: {reuse_root}")
+
+    models_root = Path(cfg["models_dir"])
+    checkpoints = {name: models_root / f"{name}.pth" for name in loaded_names}
+    absent = [str(path) for path in checkpoints.values() if not path.is_file()]
+    if absent:
+        raise FileNotFoundError(f"Missing detector checkpoints: {absent}")
+    checkpoint_records = {
+        name: {
+            "path": str(path.resolve()),
+            "sha256": _file_sha256(path),
+            "size_bytes": path.stat().st_size,
+        }
+        for name, path in checkpoints.items()
     }
 
-    for sample in tqdm(samples, desc="Images"):
-        o_path = sample['path']
-        label = sample['label']
-        rel = o_path.relative_to(original_root)
-        print(f"[IMAGE] {rel}")
+    seed = cfg.get("seed", 0)
+    configure_reproducibility(seed)
+    device = get_device(cfg.get("device", "auto"))
+    metric_device = get_metric_device(cfg.get("metric_device", "cpu"))
+    classifiers = {}
+    for name in loaded_names:
+        adapter = load_detector(
+            name,
+            checkpoints[name],
+            device,
+            log_dct=bool(cfg.get("dct_log_scale", True)),
+        )
+        classifiers[name] = {
+            "adapter": adapter,
+            "weight": float(weight_cfg.get(name, 1.0)),
+            "clean_correct": [],
+            "adversarial_correct": [],
+            "eligible": [],
+            "success": [],
+            "raw_success": [],
+        }
 
-        img_o = pil_to_np_rgb(o_path)
-        if reuse_attacked_dir:
-            reused_path = Path(reuse_attacked_dir) / rel
-            if not reused_path.is_file():
+    metric = build_lpips_metric(metric_device)
+    source_classifiers = {
+        name: classifiers[name] for name in source_names if name in classifiers
+    }
+    sample_records = []
+    score_sum = 0.0
+    l2_values = []
+    linf_values = []
+
+    iterator = tqdm(samples, desc="Images", disable=not cfg.get("progress", True))
+    for sample in iterator:
+        original_path = sample["path"]
+        relative_path = original_path.relative_to(dataset_root)
+        adversarial_relative = _adversarial_relative_path(relative_path)
+        original = pil_to_np_rgb(original_path)
+
+        if reuse_root is not None:
+            attacked_path = reuse_root / adversarial_relative
+            if not attacked_path.is_file():
                 raise FileNotFoundError(
-                    f"Reused adversarial image not found: {reused_path}"
+                    f"Reused adversarial image not found: {attacked_path}"
                 )
-            img_a = pil_to_np_rgb(reused_path)
+            attacked = pil_to_np_rgb(attacked_path)
         else:
-            call_params = dict(attack_params)
-            if cfg['attack'] == 'fgsm':
-                call_params.setdefault('objective', objective)
-                call_params.setdefault('label', label)
-            img_a = attack_fn(img_o, attack_classifiers, device, **call_params)
+            parameters = dict(attack_params)
+            parameters.setdefault("objective", objective)
+            parameters.setdefault("label", sample["label"])
+            parameters.setdefault("seed", seed)
+            attacked = attack_function(
+                original, source_classifiers, device, **parameters
+            )
+            _validate_attack_output(attacked, original)
+            if save_root is not None:
+                attacked_path = save_root / adversarial_relative
+                attacked_path.parent.mkdir(parents=True, exist_ok=True)
+                Image.fromarray(attacked).save(attacked_path, format="PNG")
+                attacked = pil_to_np_rgb(attacked_path)
+        _validate_attack_output(attacked, original)
 
-        if save_attacked_dir:
-            save_path = Path(save_attacked_dir) / rel
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-            Image.fromarray(img_a).save(save_path)
-            img_a = pil_to_np_rgb(save_path)
+        difference = (attacked.astype(np.float32) - original.astype(np.float32)) / 255.0
+        l2_value = float(np.linalg.norm(difference.reshape(-1)))
+        linf_value = float(np.abs(difference).max())
+        epsilon = attack_params.get("epsilon") if reuse_root is None else None
+        if epsilon is not None:
+            allowed = np.ceil(float(epsilon) * 255.0) / 255.0
+            if linf_value > allowed + 1e-12:
+                raise RuntimeError(
+                    f"Attack exceeded epsilon for {relative_path}: {linf_value} > {allowed}"
+                )
+        l2_values.append(l2_value)
+        linf_values.append(linf_value)
 
-        delta = (img_a.astype(np.float32) - img_o.astype(np.float32)) / 255.0
-        l2_val = float(np.linalg.norm(delta.reshape(-1), ord=2))
-        linf_val = float(np.abs(delta).max())
-        l2_values.append(l2_val)
-        linf_values.append(linf_val)
-
-        # SSIM
-        try:
-            img_o = pil_to_np_rgb(o_path)
-            img_a = attack_fn(img_o, classifiers, device, **attack_params)
-
-        # LPIPS
+        ssim_value = compute_ssim_rgb(original, attacked)
         with torch.no_grad():
-            lpips_val = lpips_fn(
-                np_to_lpips_tensor(img_o, metric_device),
-                np_to_lpips_tensor(img_a, metric_device)
-            ).item()
-        print(f"    LPIPS: {lpips_val:.4f}")
-
-        sim_weight = alpha * ssim_val + (1.0 - alpha) * (1.0 - lpips_val)
-        pair_contribution = 0.0
-
+            lpips_value = float(
+                metric(
+                    np_to_lpips_tensor(original, metric_device),
+                    np_to_lpips_tensor(attacked, metric_device),
+                ).item()
+            )
+        similarity = alpha * ssim_value + (1.0 - alpha) * (1.0 - lpips_value)
         detector_records = {}
         for name in target_names:
             pack = classifiers[name]
-            with torch.no_grad():
-                clean_tensor = np_to_detector_tensor(img_o, device)
-                clean_pred = pack['adapter'](clean_tensor).argmax(1).item()
-                del clean_tensor
-                adv_tensor = np_to_detector_tensor(img_a, device)
-                pred = pack['adapter'](adv_tensor).argmax(1).item()
-                del adv_tensor
-
-            indicator = int(pred == CLASS_IDX_REAL)
-            clean_ok = label is not None and clean_pred == label
-            adv_ok = label is not None and pred == label
-            if objective == 'targeted_fake_to_real':
-                eligible = clean_ok and label == 1
-                success = eligible and pred == CLASS_IDX_REAL
-            elif objective == 'untargeted':
-                eligible = clean_ok
-                success = eligible and pred != label
-            else:
-                raise ValueError(f"Unsupported objective: {objective}")
-            pack['indicators'].append(indicator)
-            pack['ssim_vals'].append(ssim_val)
-            pack['lpips_vals'].append(lpips_val)
-            pack['eligible'].append(int(eligible))
-            pack['successes'].append(int(success))
-            pack['clean_ok'].append(int(clean_ok))
-            pack['adv_ok'].append(int(adv_ok))
-
-            print(f"    SSIM : {ssim_val:.4f}    LPIPS: {lpips_val:.4f}")
-            sim_weight = alpha * ssim_val + (1.0 - alpha) * (1.0 - lpips_val)
-            pair_contribution = 0.0
-            rec = {'path': str(rel), 'ssim': ssim_val, 'lpips': lpips_val,
-                   'linf': linf, 'classifiers': {}}
-
-            print(
-                f"    [{name:<22s}]  "
-                f"pred={'Real' if pred == 0 else 'Fake'}  "
-                f"indicator={indicator}  "
-                f"contribution={contribution:.4f}"
-            )
+            clean_prediction = predict_np(pack, original, device)
+            adversarial_prediction = predict_np(pack, attacked, device)
+            clean_correct = clean_prediction == sample["label"]
+            adversarial_correct = adversarial_prediction == sample["label"]
+            eligible = clean_correct
+            raw_success = _success(objective, sample["label"], adversarial_prediction)
+            success = eligible and raw_success
+            pack["clean_correct"].append(int(clean_correct))
+            pack["adversarial_correct"].append(int(adversarial_correct))
+            pack["eligible"].append(int(eligible))
+            pack["success"].append(int(success))
+            pack["raw_success"].append(int(raw_success))
+            score_sum += pack["weight"] * similarity * int(raw_success)
             detector_records[name] = {
-                'clean_prediction': clean_pred,
-                'adversarial_prediction': pred,
-                'eligible': bool(eligible),
-                'success': bool(success),
+                "clean_prediction": clean_prediction,
+                "adversarial_prediction": adversarial_prediction,
+                "eligible": bool(eligible),
+                "success": bool(success),
             }
 
-                contribution = pack['clf_weight'] * sim_weight * indicator
-                pair_contribution += contribution
-                rec['classifiers'][name] = {
-                    'clean':     'Real' if clean_pred == 0 else 'Fake',
-                    'attacked':  'Real' if pred == 0 else 'Fake',
-                    'indicator': indicator,
-                }
-                print(
-                    f"    [{name:<22s}]  "
-                    f"clean={'Real' if clean_pred == 0 else 'Fake'}  "
-                    f"pred={'Real' if pred == 0 else 'Fake'}  "
-                    f"indicator={indicator}  "
-                    f"contribution={contribution:.4f}"
-                )
-
-            print(f"    L_inf: {linf}/255   Pair total contribution: {pair_contribution:.4f}")
-        except Exception as e:
-            warnings.warn(f"[SKIP] {rel}: {e!r}")
-            continue
-
-        per_image.append(rec)
-        running_sum += pair_contribution
-        total_pairs += 1
-        sample_records.append({
-            'sample_id': sample['sample_id'],
-            'relative_path': str(rel),
-            'label': label,
-            'ssim': ssim_val,
-            'lpips': lpips_val,
-            'l2': l2_val,
-            'linf': linf_val,
-            'detectors': detector_records,
-        })
-
-    if total_pairs == 0:
-        print("[RESULT] No valid image pairs — score = 0")
-        return
-
-    # ── Aggregate ─────────────────────────────────────────────────────────
-    total_weight = sum(classifiers[name]['clf_weight'] for name in target_names)
-    if cfg.get('aggregate', 'mean').lower() == 'mean':
-        final_score = running_sum / (total_pairs * total_weight)
-    else:
-        final_score = running_sum
-
-    # ── Report ────────────────────────────────────────────────────────────
-    print("\n" + "=" * 55)
-    print("[RESULT] SUMMARY")
-    print("=" * 55)
-    print(f"  Images evaluated        : {total_pairs}")
-    print(f"  Classifiers             : {len(classifiers)}")
-    print(f"  Aggregate               : {cfg.get('aggregate', 'mean')}")
-    print(f"  Alpha (SSIM weight)     : {alpha}")
-    print(f"  Final score             : {final_score:.6f}")
-    print()
-    for name in target_names:
-        pack = classifiers[name]
-        asr       = np.mean(pack['indicators'])   if pack['indicators']   else 0.0
-        m_ssim    = np.mean(pack['ssim_vals'])    if pack['ssim_vals']    else 0.0
-        m_lpips   = np.mean(pack['lpips_vals'])   if pack['lpips_vals']   else 0.0
-        denominator = sum(pack['eligible'])
-        conditional_asr = (sum(pack['successes']) / denominator
-                           if denominator else 0.0)
-        print(
-            f"  [{name:<22s}]  "
-            f"attack_success={asr:.4f}  "
-            f"conditional_asr={conditional_asr:.4f}  "
-            f"denominator={denominator}  "
-            f"mean_ssim={m_ssim:.4f}  "
-            f"mean_lpips={m_lpips:.4f}  "
-            f"clf_weight={pack['clf_weight']:.2f}"
+        sample_records.append(
+            {
+                "sample_id": sample["sample_id"],
+                "relative_path": relative_path.as_posix(),
+                "adversarial_relative_path": adversarial_relative.as_posix(),
+                "label": sample["label"],
+                "ssim": ssim_value,
+                "lpips": lpips_value,
+                "l2": l2_value,
+                "linf": linf_value,
+                "detectors": detector_records,
+            }
         )
 
-    # ── JSON report ──────────────────────────────────────────────
-    out_json = cfg.get('save_json')
-    if out_json:
-        report = {
-            'config_path':       cfg.get('_config_path'),
-            'config_sha256':     cfg.get('_config_sha256'),
-            'final_score':       final_score,
-            'aggregate':         cfg.get('aggregate', 'mean'),
-            'alpha':             alpha,
-            'metric_device':     str(metric_device),
-            'objective':         objective,
-            'source_classifiers': list(source_names),
-            'target_classifiers': list(target_names),
-            'reuse_attacked_dir': reuse_attacked_dir,
-            'images_evaluated':  total_pairs,
-            'runtime_seconds':   time.perf_counter() - started_at,
-            'mean_l2':           float(np.mean(l2_values)),
-            'max_linf':          float(np.max(linf_values)),
-            'per_classifier': {
-                n: {
-                    'clf_weight':     p['clf_weight'],
-                    'attack_success': float(np.mean(p['indicators'])
-                                           if p['indicators'] else 0.0),
-                    'mean_ssim':      float(np.mean(p['ssim_vals'])
-                                           if p['ssim_vals'] else 0.0),
-                    'mean_lpips':     float(np.mean(p['lpips_vals'])
-                                           if p['lpips_vals'] else 0.0),
-                    'clean_accuracy': float(np.mean(p['clean_ok'])),
-                    'adversarial_accuracy': float(np.mean(p['adv_ok'])),
-                    'conditional_asr': (
-                        float(sum(p['successes']) / sum(p['eligible']))
-                        if sum(p['eligible']) else 0.0
-                    ),
-                    'conditional_asr_denominator': sum(p['eligible']),
-                }
-                for n, p in ((name, classifiers[name])
-                             for name in target_names)
-            },
-            'samples': sample_records,
+    total_target_weight = sum(classifiers[name]["weight"] for name in target_names)
+    final_score = (
+        score_sum
+        if aggregate == "sum"
+        else score_sum / (len(samples) * total_target_weight)
+    )
+    per_classifier = {}
+    for name in target_names:
+        pack = classifiers[name]
+        denominator = sum(pack["eligible"])
+        per_classifier[name] = {
+            "clf_weight": pack["weight"],
+            "attack_success": float(np.mean(pack["raw_success"])),
+            "clean_accuracy": float(np.mean(pack["clean_correct"])),
+            "adversarial_accuracy": float(np.mean(pack["adversarial_correct"])),
+            "conditional_asr": float(sum(pack["success"]) / denominator)
+            if denominator
+            else None,
+            "conditional_asr_denominator": denominator,
         }
-        if manifest_records is not None:
-            report['protocol'] = {
-                'manifest': str(Path(manifest_path).resolve()),
-                'eligible_source': eligible_source,
-                'eligible_target': eligible_target,
-                'direction': direction,
-                'eligible_count': total_pairs,
-                'conditional_asr': float(np.mean(protocol_target_indicators)
-                                         if protocol_target_indicators else 0.0),
-                # The run intentionally attacks only the eligible subset, so
-                # an all-manifest attacked rate is unavailable here.
-                'all_sample_target_rate': None,
-                'evaluated_subset_target_rate': float(
-                    np.mean(protocol_target_indicators)
-                    if protocol_target_indicators else 0.0
-                ),
-            }
-        Path(out_json).parent.mkdir(parents=True, exist_ok=True)
-        with open(out_json, 'w') as f:
-            json.dump(report, f, indent=2)
-        print(f"\n[RESULT] JSON report → {out_json}")
+
+    report = {
+        "config_path": cfg.get("_config_path"),
+        "config_sha256": cfg.get("_config_sha256"),
+        "manifest": cfg.get("manifest"),
+        "objective": objective,
+        "attack": None if reuse_root is not None else cfg.get("attack", "identity"),
+        "attack_params": attack_params,
+        "seed": seed,
+        "determinism": {
+            "seeded_python_numpy_torch": True,
+            "cudnn_benchmark": False,
+            "cudnn_deterministic": True,
+        },
+        "environment": environment_versions(),
+        "source_classifiers": list(source_names),
+        "target_classifiers": list(target_names),
+        "checkpoints": checkpoint_records,
+        "images_evaluated": len(samples),
+        "aggregate": aggregate,
+        "alpha": alpha,
+        "final_score": final_score,
+        "mean_ssim": float(np.mean([sample["ssim"] for sample in sample_records])),
+        "mean_lpips": float(np.mean([sample["lpips"] for sample in sample_records])),
+        "mean_l2": float(np.mean(l2_values)),
+        "max_linf": float(np.max(linf_values)),
+        "per_classifier": per_classifier,
+        "samples": sample_records,
+        "runtime_seconds": time.perf_counter() - started,
+    }
+    output_path = cfg.get("save_json")
+    if output_path:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w", encoding="utf-8") as stream:
+            json.dump(report, stream, indent=2, sort_keys=True)
+            stream.write("\n")
+    return report
 
 
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", required=True, help="YAML experiment configuration")
+    arguments = parser.parse_args()
+    report = evaluate(load_cfg(arguments.config))
+    print(f"Evaluated {report['images_evaluated']} images")
+    print(f"Final score: {report['final_score']:.6f}")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Evaluate adversarial robustness.")
-    parser.add_argument('--config', required=True, help="Path to YAML configuration file.")
-    args = parser.parse_args()
-    evaluate(load_cfg(args.config))
+
+if __name__ == "__main__":
+    main()

@@ -1,64 +1,23 @@
-weights/
-experiments/
+# Local data, model assets, and generated evaluation output
+data/
+outputs/
+weights/*.pth
+weights/*.pt
 
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
-*.so
-*.egg-info/
-*.egg
-dist/
-build/
-.eggs/
-
-# Environments
-.env
-.envrc
+# Python environments and generated files
 .venv/
-env/
-venv/
-
-# IDE / editor
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Testing / coverage
+__pycache__/
+*.py[cod]
+*.egg-info/
 .pytest_cache/
 .coverage
 htmlcov/
-.tox/
-.nox/
-
-# Type checkers
 .mypy_cache/
-.dmypy.json
-.pytype/
-.pyre/
-
-# Misc
-*.log
-*.log.*
-tempCodeRunnerFile.py
 .ruff_cache/
 
-# PyPI configuration file
-.pypirc
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
-
-# Streamlit
-.streamlit/secrets.toml
-
-experiments/
-weights/*.pth
+# Local/editor files
+.env
+.idea/
+.vscode/
+*.swp
+.DS_Store

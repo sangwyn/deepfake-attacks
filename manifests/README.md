@@ -1,19 +1,9 @@
 # Dataset manifests
 
-Manifests are deterministic JSON Lines inventories. Each row records the
-project-independent relative dataset path, explicit class label, byte length,
-and SHA-256 digest. The image data itself is never committed.
+`celebA/test_{fake,real}.jsonl` freeze the 200-image evaluation set. Paths are
+relative to the configured `TEST` directory; labels are still verified from
+`TEST_FAKE` (1) and `TEST_REAL` (0), and every image is checked against its
+SHA-256 digest before evaluation. Image data is intentionally not committed.
 
-Generate them on the server only after preflight succeeds:
-
-```bash
-.venv/bin/python -m attacklab.cli build-manifests \
-  --config configs/pipeline/server.yaml \
-  --output-dir manifests/celebA
-git add manifests/celebA
-git commit -m "data: freeze audited CelebA manifests"
-```
-
-Generation refuses to overwrite existing manifests by default. Use a new
-directory for a changed dataset snapshot. `--overwrite` is intended only for
-an uncommitted local correction that has been reviewed by a human.
+Treat these manifests as immutable protocol artifacts. Create a separately
+named manifest if the dataset snapshot changes.

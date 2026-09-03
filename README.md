@@ -1,36 +1,74 @@
-# Adversarial Attacks on AI Image Detectors (AADD-2026)
+# Adversarial attacks on deepfake detectors
 
-Targeted adversarial attack research against AI-generated-image detectors, studying five distinct attack strategies under a unified evaluation protocol.
+Reproducible targeted fake-to-real attacks against four image detectors:
+ViT-B/16, DenseNet-121-DCT, NPR, and AIDE. The submission uses one evaluator,
+strict checkpoint loading, directory-derived labels, and SHA-256-verified TEST
+manifests. It is intended for detector robustness research.
 
-> **Disclaimer:** This code is for detector red-teaming and robustness analysis. It is not a claim of effectiveness against hidden detectors, real camera pipelines, or an official AADD-2026 leaderboard score.
+## Environment
 
-This branch adds a reproducible research pipeline and a restricted OpenCode
-control plane around the original AADD evaluator. The original `evaluate.py`
-and attack modules remain available; new orchestration lives beside them.
+Use Linux and Python 3.11.11. A CUDA GPU is strongly recommended for the full
+four-detector run; install the PyTorch 2.3.0 build appropriate for the host if
+the default wheel is unsuitable.
 
-## Separation of concerns
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-| Purpose | Canonical location on the server | Git policy |
-|---|---|---|
-| Versioned project and agent instructions | `/home/aiattacks/oleg/aadd-attack-pipeline` | tracked |
-| CelebA dataset | `/home/aiattacks/dataset/celebA` | external, read-only |
-| Detector and LPIPS weights | `/home/aiattacks/oleg/aadd-attack-assets/weights` | external, hash-verified |
-| Heavy run artifacts | `/home/aiattacks/oleg/aadd-attack-runs` | external |
-| Compact run ledger | `tracking/` inside the project | tracked |
-| GPU queue database and locks | `.gpuq/` inside the project | local, ignored |
+The main dependencies are PyTorch/torchvision, LPIPS, OpenCLIP (for AIDE),
+NumPy/SciPy, Pillow, scikit-image, PyYAML, and tqdm. Exact versions are pinned
+in `requirements.txt`; test dependencies are in `requirements-dev.txt`.
+LPIPS may download its standard AlexNet weights on first use, so cache them
+before moving the environment to an offline machine.
 
-Never put API keys in this repository. The project references the existing
-OpenCode provider configuration but does not copy it.
+## Data and checkpoints
 
-## First server setup
+Place the evaluation snapshot under:
 
-- `weights/` contains deepfake classifiers for attacking
+```text
+data/TEST/TEST_FAKE/
+data/TEST/TEST_REAL/
+```
 
-Campaign configs use `evaluate.py` with `manifest`, `source_classifiers`,
-`target_classifiers`, `objective`, and `attack_params`. The immutable manifest is
-JSONL with `sample_id`, dataset-relative `relative_path`, directory-derived
-`label`, and `sha256` in every row. Supported detectors are `vit_b_16`,
-`densenet121_dct`, `npr`, and `aide`.
+Place the four supplied checkpoints in `weights/` as documented in
+`weights/README.md`. Dataset images, checkpoints, and generated outputs are
+excluded from Git. The committed manifests cover 100 fake and 100 real images;
+labels are accepted only from the two directory names.
 
-LPIPS runs on CPU by default so detector gradients retain the GPU memory budget.
-Set `metric_device: cuda` explicitly only when the GPU has sufficient headroom.
+## Reproduce
+
+`configs/reproduce.yaml` declares the dataset/manifest paths, source and target
+detectors, attack parameters, metric settings, and seed. It reproduces the
+selected ISP-prior ensemble PGD candidate at an 8/255 L-infinity budget using
+ViT and DenseNet-DCT as sources and all four detectors as targets.
+
+```bash
+python evaluate.py --config configs/reproduce.yaml
+```
+
+Expected output:
+
+```text
+outputs/attacked/TEST_FAKE/*.png  # lossless adversarial images
+outputs/results.json              # config/checkpoint hashes, metrics, samples
+```
+
+The JSON reports clean accuracy, adversarial accuracy, clean-correct
+conditional ASR, SSIM, LPIPS, L2/L-infinity distortion, and the configured
+similarity-weighted score. Available attack modules are `identity`, `fgsm`,
+`pgd`, `mi_di_fgsm`, `ssa_s2i_fgsm`, `mig_cow`, `frequency_pgd`, and `isp_pgd`.
+
+## Verify
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
+python evaluate.py --help
+```
+
+Prior development and five-direction summaries are retained under `results/`.
+They are diagnostic local-detector results, not hidden-detector or official
+leaderboard claims. Third-party architecture attribution is in `NOTICE.md`.
