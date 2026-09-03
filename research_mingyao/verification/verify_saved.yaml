@@ -1,0 +1,19 @@
+# Independent verification config: runs the UNCHANGED official evaluate.py with
+# ViDA and SAVES every adversarial image as LOSSLESS PNG (source tree staged
+# with .png symlinks so PIL does not JPEG-compress reals).
+# Independently re-score the outputs with my_attack/rescore_saved.py.
+original_root: /data2/aiattacks/Mingyao-Duan/my_attack/verify_outputs/db_png
+attack: vida
+save_attacked_dir: /data2/aiattacks/Mingyao-Duan/my_attack/verify_outputs/vida_v34_images_png
+models_dir: weights
+save_json: /data2/aiattacks/Mingyao-Duan/my_attack/verify_outputs/verify_run_png.json
+classifiers:
+  - vit_b_16
+  - densenet121_dct
+dct_log_scale: true
+weights:
+  vit_b_16: 1.0
+  densenet121_dct: 1.0
+aggregate: sum
+device: cuda
+alpha: 0.5

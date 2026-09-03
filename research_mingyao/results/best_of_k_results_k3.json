@@ -1,0 +1,161 @@
+{
+  "k": 3,
+  "images": {
+    "001539": {
+      "tag": "hard",
+      "runs": [
+        {
+          "run": 0,
+          "ssim": 0.9649,
+          "lpips": 0.0216,
+          "q": 0.9717,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 78.5
+        },
+        {
+          "run": 1,
+          "ssim": 0.9842,
+          "lpips": 0.0083,
+          "q": 0.988,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 75.6
+        },
+        {
+          "run": 2,
+          "ssim": 0.9525,
+          "lpips": 0.0355,
+          "q": 0.9585,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 76.6
+        }
+      ],
+      "best_run": 1,
+      "best_q": 0.988,
+      "mean_q": 0.9727333333333333,
+      "std_q": 0.012065469553877928,
+      "min_q": 0.9585,
+      "all_fooled_every_run": true,
+      "total_time_s": 230.7
+    },
+    "001556": {
+      "tag": "hard",
+      "runs": [
+        {
+          "run": 0,
+          "ssim": 0.9402,
+          "lpips": 0.0475,
+          "q": 0.9464,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 115.7
+        },
+        {
+          "run": 1,
+          "ssim": 0.9343,
+          "lpips": 0.0481,
+          "q": 0.9431,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 110.4
+        },
+        {
+          "run": 2,
+          "ssim": 0.9875,
+          "lpips": 0.0063,
+          "q": 0.9906,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 181.1
+        }
+      ],
+      "best_run": 2,
+      "best_q": 0.9906,
+      "mean_q": 0.9600333333333334,
+      "std_q": 0.021655843450569076,
+      "min_q": 0.9431,
+      "all_fooled_every_run": true,
+      "total_time_s": 407.2
+    },
+    "001553": {
+      "tag": "rescue-effective",
+      "runs": [
+        {
+          "run": 0,
+          "ssim": 0.992,
+          "lpips": 0.0079,
+          "q": 0.992,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 60.6
+        },
+        {
+          "run": 1,
+          "ssim": 0.9973,
+          "lpips": 0.002,
+          "q": 0.9976,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 62.1
+        },
+        {
+          "run": 2,
+          "ssim": 0.9973,
+          "lpips": 0.0015,
+          "q": 0.9979,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 63.7
+        }
+      ],
+      "best_run": 2,
+      "best_q": 0.9979,
+      "mean_q": 0.9958333333333332,
+      "std_q": 0.0027133415233291775,
+      "min_q": 0.992,
+      "all_fooled_every_run": true,
+      "total_time_s": 186.4
+    },
+    "001549": {
+      "tag": "easy",
+      "runs": [
+        {
+          "run": 0,
+          "ssim": 0.9961,
+          "lpips": 0.0023,
+          "q": 0.9969,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 68.4
+        },
+        {
+          "run": 1,
+          "ssim": 0.9974,
+          "lpips": 0.0015,
+          "q": 0.998,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 100.8
+        },
+        {
+          "run": 2,
+          "ssim": 0.9971,
+          "lpips": 0.0016,
+          "q": 0.9977,
+          "n_fooled": 2,
+          "bad_detectors": [],
+          "time_s": 60.1
+        }
+      ],
+      "best_run": 1,
+      "best_q": 0.998,
+      "mean_q": 0.9975333333333333,
+      "std_q": 0.00046427960923947,
+      "min_q": 0.9969,
+      "all_fooled_every_run": true,
+      "total_time_s": 229.3
+    }
+  }
+}
