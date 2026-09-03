@@ -4,7 +4,7 @@ description: Implement and CPU-test one named adversarial attack, freeze its exp
 compatibility: OpenCode 1.18.26; project attack-worker only
 metadata:
   owner: aadd-attack-pipeline
-  model: naapi/gpt-5.6-luna
+  model: naapi/gpt-5.6-terra
 ---
 
 # Attack execution workflow
@@ -16,7 +16,7 @@ Before work, read `AGENTS.md`, the selected row and checks in `OPENCODE_LUNA.md`
 ## 1. Fail-closed preflight
 
 - Confirm the working directory is the canonical Git worktree for `/home/aiattacks/oleg/aadd-attack-pipeline`, not the dataset or an old clone.
-- Confirm OpenCode `1.18.26` and model `naapi/gpt-5.6-luna` were selected by the caller.
+- Confirm OpenCode `1.18.26` and model `naapi/gpt-5.6-terra` were selected by the caller.
 - Inspect Git status and preserve unrelated changes.
 - Confirm the requested scope is one of `smoke`, `development`, or explicitly authorized `full`.
 - Confirm prerequisites, manifest identity, detector checkpoint paths/hashes, shared attack API, projector, differentiable preprocessing, and validator/runner entrypoints exist.

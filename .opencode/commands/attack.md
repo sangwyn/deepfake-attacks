@@ -1,7 +1,7 @@
 ---
 description: "Prepare and enqueue one attack: /attack <name> <smoke|development|full> [status-file] [task-id]"
 agent: attack-worker
-model: naapi/gpt-5.6-luna
+model: naapi/gpt-5.6-terra
 subtask: false
 ---
 

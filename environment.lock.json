@@ -19,7 +19,7 @@
   "opencode": {
     "binary": "/home/aiattacks/.opencode/bin/opencode",
     "version": "1.18.26",
-    "model": "naapi/gpt-5.6-luna"
+    "model": "naapi/gpt-5.6-terra"
   },
   "lock_file": "requirements.lock",
   "lock_file_sha256": "abc5eab1384939ead8b5854874ba9defb3bc8338d226592d6c95a7b286c40737",

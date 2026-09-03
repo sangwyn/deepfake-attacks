@@ -1,7 +1,7 @@
 ---
 description: Implements and tests exactly one attack, freezes its job spec, and submits it to gpuq without running GPU code directly.
 mode: primary
-model: naapi/gpt-5.6-luna
+model: naapi/gpt-5.6-terra
 temperature: 0.1
 tools:
   bash: true

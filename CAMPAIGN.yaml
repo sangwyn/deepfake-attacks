@@ -17,7 +17,7 @@ preflight:
 control:
   opencode_binary: /home/aiattacks/.opencode/bin/opencode
   opencode_version: 1.18.26
-  model: naapi/gpt-5.6-luna
+  model: naapi/gpt-5.6-terra
   pure: true
   # Declared target. The controller is sequential today and starts one worker
   # at a time; raising this has no effect until per-worker Git worktrees exist.

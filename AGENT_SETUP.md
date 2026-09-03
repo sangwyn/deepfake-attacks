@@ -21,7 +21,7 @@ Do not launch from a parent directory, a legacy checkout, or the dataset directo
 ## 1. Required versions and inputs
 
 - OpenCode: exactly `1.18.26` at `/home/aiattacks/.opencode/bin/opencode`.
-- Model ID: exactly `naapi/gpt-5.6-luna`.
+- Model ID: exactly `naapi/gpt-5.6-terra`.
 - Python/CUDA dependencies: install only through the reviewed lock/bootstrap procedure outside an automated agent session; `requirements.lock`, `pyproject.toml`, and `environment.lock.json` are the recorded contract.
 - Detector checkpoints: `vit_b_16.pth` and `densenet121_dct.pth`. These are detector weights, not attack weights. Their absolute resolved paths and SHA-256 hashes must be recorded by preflight/run provenance. Agents may not download or modify them.
 - Provider credentials: external user configuration only. This repository intentionally contains no API key or provider secret.
@@ -36,7 +36,7 @@ python3 scripts/preflight.py --strict
 python3 -m ops.gpuq doctor --json
 ```
 
-The first command must print `1.18.26`; the model listing must contain `naapi/gpt-5.6-luna`. Treat a missing preflight script, manifest, checkpoint, compatible environment, queue, or CUDA runtime as a blocker. Do not repair the environment from inside OpenCode.
+The first command must print `1.18.26`; the model listing must contain `naapi/gpt-5.6-terra`. Treat a missing preflight script, manifest, checkpoint, compatible environment, queue, or CUDA runtime as a blocker. Do not repair the environment from inside OpenCode.
 
 ## 2. Interactive use
 
@@ -44,7 +44,7 @@ Start with the explicitly named primary agent because the permissive built-in ag
 
 ```bash
 cd /home/aiattacks/oleg/aadd-attack-pipeline
-/home/aiattacks/.opencode/bin/opencode --agent coordinator --model naapi/gpt-5.6-luna .
+/home/aiattacks/.opencode/bin/opencode --agent coordinator --model naapi/gpt-5.6-terra .
 ```
 
 Use the coordinator for campaign actions:

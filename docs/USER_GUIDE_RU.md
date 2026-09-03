@@ -115,7 +115,7 @@ Python:         3.12.3
 PyTorch:        2.3.0+cu121
 NVIDIA driver:  >= 525.60
 OpenCode:       1.18.26
-Модель:         naapi/gpt-5.6-luna
+Модель:         naapi/gpt-5.6-terra
 ```
 
 ### Серверные пути
@@ -157,7 +157,7 @@ bash scripts/bootstrap_environment.sh
 
 # 7. Проверить OpenCode
 /home/aiattacks/.opencode/bin/opencode --version   # должно быть 1.18.26
-/home/aiattacks/.opencode/bin/opencode models       # должен содержать naapi/gpt-5.6-luna
+/home/aiattacks/.opencode/bin/opencode models       # должен содержать naapi/gpt-5.6-terra
 ```
 
 ---
@@ -234,7 +234,7 @@ cd /home/aiattacks/oleg/aadd-attack-pipeline
 cd /home/aiattacks/oleg/aadd-attack-pipeline
 /home/aiattacks/.opencode/bin/opencode \
   --agent coordinator \
-  --model naapi/gpt-5.6-luna \
+  --model naapi/gpt-5.6-terra \
   .
 ```
 
@@ -253,7 +253,7 @@ cd /home/aiattacks/oleg/aadd-attack-pipeline
 ```bash
 /home/aiattacks/.opencode/bin/opencode \
   --agent attack-worker \
-  --model naapi/gpt-5.6-luna \
+  --model naapi/gpt-5.6-terra \
   .
 ```
 

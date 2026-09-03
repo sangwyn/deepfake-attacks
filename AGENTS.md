@@ -19,7 +19,7 @@ All three are primary agents invoked in separate OpenCode processes. The built-i
 
 ## Non-negotiable rules
 
-1. Use OpenCode `1.18.26` with the exact model ID `naapi/gpt-5.6-luna`. Stop if either differs.
+1. Use OpenCode `1.18.26` with the exact model ID `naapi/gpt-5.6-terra`. Stop if either differs.
 2. Start OpenCode at the canonical repository root. Do not run it from the dataset directory, any legacy checkout, or a parent directory.
 3. Never place API keys, tokens, provider URLs containing credentials, SSH material, or complete environment dumps in this repository, prompts, status files, or logs. Provider credentials remain in the user's external OpenCode configuration.
 4. Never edit the official evaluator or challenge-controlled semantics. Protected inputs include `evaluate.py`, `AADD-2026/AADD_2026_evaluation.py` when present, dataset files, manifests selected for a frozen run, detector preprocessing, detector checkpoints, metric definitions, and completed run artifacts.

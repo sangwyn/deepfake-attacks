@@ -244,7 +244,7 @@ NVIDIA driver:        не ниже 525.60
 server driver:        550.120
 GPU:                  NVIDIA L40, 8 устройств
 OpenCode:             1.18.26
-OpenCode model:       naapi/gpt-5.6-luna
+OpenCode model:       naapi/gpt-5.6-terra
 ```
 
 Файлы окружения:
@@ -504,7 +504,7 @@ warning.
 
 ```text
 1.18.26
-naapi/gpt-5.6-luna
+naapi/gpt-5.6-terra
 ```
 
 ---
@@ -1101,7 +1101,7 @@ cd /home/aiattacks/oleg/aadd-attack-pipeline
 Нужно убедиться, что:
 
 - используется project-local `opencode.jsonc`;
-- model везде `naapi/gpt-5.6-luna`;
+- model везде `naapi/gpt-5.6-terra`;
 - built-in Task/subagents выключены;
 - reviewer не имеет edit/bash/network;
 - attack-worker не может запускать GPU runner напрямую;
@@ -1114,7 +1114,7 @@ cd /home/aiattacks/oleg/aadd-attack-pipeline
 cd /home/aiattacks/oleg/aadd-attack-pipeline
 /home/aiattacks/.opencode/bin/opencode \
   --agent coordinator \
-  --model naapi/gpt-5.6-luna \
+  --model naapi/gpt-5.6-terra \
   .
 ```
 
@@ -1805,7 +1805,7 @@ bash scripts/bootstrap_environment.sh
 /home/aiattacks/.opencode/bin/opencode debug agent coordinator
 /home/aiattacks/.opencode/bin/opencode debug agent attack-worker
 /home/aiattacks/.opencode/bin/opencode debug agent campaign-reviewer
-/home/aiattacks/.opencode/bin/opencode --agent coordinator --model naapi/gpt-5.6-luna .
+/home/aiattacks/.opencode/bin/opencode --agent coordinator --model naapi/gpt-5.6-terra .
 ```
 
 В интерактивной session:

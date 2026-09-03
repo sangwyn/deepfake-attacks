@@ -1,7 +1,7 @@
 ---
 description: Apply frozen scientific gates to verifier-approved campaign evidence
 agent: campaign-reviewer
-model: naapi/gpt-5.6-luna
+model: naapi/gpt-5.6-terra
 subtask: false
 ---
 

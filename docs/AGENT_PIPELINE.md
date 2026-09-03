@@ -31,7 +31,7 @@ PROJECT_ROOT=/home/aiattacks/oleg/aadd-attack-pipeline
 DATASET_ROOT=/home/aiattacks/dataset/celebA
 OPENCODE_BIN=/home/aiattacks/.opencode/bin/opencode
 OPENCODE_VERSION=1.18.26
-OPENCODE_MODEL=naapi/gpt-5.6-luna
+OPENCODE_MODEL=naapi/gpt-5.6-terra
 ```
 
 The repository contains the scientific code and agent control plane. The dataset is external and read-only. Detector checkpoints may be stored outside Git, but each run must resolve and hash both expected files:
@@ -68,7 +68,7 @@ Large trees remain immutable at their recorded paths and are represented in Git 
 
 `opencode.jsonc` targets stable OpenCode `1.18.26`, not OpenCode V2. It uses V1 `permission` rules for edit/bash/web/external access and the deprecated-but-supported V1 `tools` switches to turn off Task/subagents and other tools that V1 cannot express granularly in `permission`.
 
-The root policy is fail-closed and built-in primary agents are disabled. Start with an explicit project primary agent. Every project agent also pins `naapi/gpt-5.6-luna` and disables `task`; concurrency is implemented by separate OS/OpenCode processes, not nested model calls.
+The root policy is fail-closed and built-in primary agents are disabled. Start with an explicit project primary agent. Every project agent also pins `naapi/gpt-5.6-terra` and disables `task`; concurrency is implemented by separate OS/OpenCode processes, not nested model calls.
 
 OpenCode permissions are not an OS sandbox. In V1, `edit: allow` is not reliably restrictable to a safe subset of repository paths. Therefore the attack worker also requires:
 
@@ -138,7 +138,7 @@ The campaign controller starts a new process for each attack task. The conceptua
 /home/aiattacks/.opencode/bin/opencode run \
   --command attack \
   --dir /home/aiattacks/oleg/aadd-attack-pipeline \
-  --model naapi/gpt-5.6-luna \
+  --model naapi/gpt-5.6-terra \
   --title <campaign-id>:<task-id> \
   <attack> <scope> <status-file> <task-id>
 ```
@@ -287,7 +287,7 @@ The reviewer never repairs a failed gate. The controller never treats model-gene
 The first real smoke job is blocked until all are true:
 
 1. The server checkout is exactly `/home/aiattacks/oleg/aadd-attack-pipeline` on the intended feature branch/commit.
-2. `opencode --version` is exactly `1.18.26` and `opencode models` contains `naapi/gpt-5.6-luna`.
+2. `opencode --version` is exactly `1.18.26` and `opencode models` contains `naapi/gpt-5.6-terra`.
 3. OpenCode discovers the three project agents, three commands, and `attack-execution` skill from this root.
 4. A permission test proves `task`, network, package installation, direct runner/GPU commands, external writes, commit, and push are denied.
 5. The clean project environment is reproducibly created from the reviewed lock and passes CUDA/detector load checks.

@@ -68,7 +68,7 @@ The reference contract is:
 - NVIDIA driver at least 525.60; server observation: 550.120;
 - all Python packages exactly pinned in `requirements.lock`;
 - OpenCode 1.18.26 at `/home/aiattacks/.opencode/bin/opencode`;
-- OpenCode model `naapi/gpt-5.6-luna`.
+- OpenCode model `naapi/gpt-5.6-terra`.
 
 The working environment observed in another user's directory is reference
 evidence only. Do not run from or modify it. Create this project's own `.venv`.

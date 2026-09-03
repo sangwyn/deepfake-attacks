@@ -1,7 +1,7 @@
 ---
 description: Read-only scientific reviewer that applies frozen gates to verifier-approved campaign evidence.
 mode: primary
-model: naapi/gpt-5.6-luna
+model: naapi/gpt-5.6-terra
 temperature: 0.0
 tools:
   bash: false

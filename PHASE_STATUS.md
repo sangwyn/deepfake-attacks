@@ -25,7 +25,7 @@ Automated campaign and queue state are stored separately under `.campaign/` and 
 | Canonical checkout | `/home/aiattacks/oleg/aadd-attack-pipeline` | pending server deployment |
 | Dataset | read-only `/home/aiattacks/dataset/celebA` | preflight required |
 | OpenCode | `1.18.26` | preflight required |
-| Model | `naapi/gpt-5.6-luna` | preflight required |
+| Model | `naapi/gpt-5.6-terra` | preflight required |
 | Agents | `coordinator`, `attack-worker`, `campaign-reviewer` | configured in `.opencode/agents/` |
 | GPU execution | `gpuq` only | scheduler validation required |
 | Campaign controller | reconciles `queued` through the verifier | implemented; sequential, one worker |

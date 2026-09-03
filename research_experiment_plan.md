@@ -299,7 +299,7 @@ The canonical server paths and versions are frozen for this campaign:
 project:  /home/aiattacks/oleg/aadd-attack-pipeline
 dataset:  /home/aiattacks/dataset/celebA
 opencode: /home/aiattacks/.opencode/bin/opencode (1.18.26)
-model:    naapi/gpt-5.6-luna
+model:    naapi/gpt-5.6-terra
 ```
 
 Mutable `.gpuq/` and live campaign databases are operational state, not hand-edited research records. Git stores the orchestration definitions, frozen configs/job specs/manifests, environment and checkpoint identities, finalized task/review statuses, result summaries, verifier reports, and content hashes needed to reconstruct what happened. Large adversarial image trees remain immutable in their recorded run locations pending an approved artifact-store policy.

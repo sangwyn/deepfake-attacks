@@ -47,7 +47,7 @@ environment:
 opencode:
   binary: /home/aiattacks/.opencode/bin/opencode
   version: 1.18.26
-  model: naapi/gpt-5.6-luna
+  model: naapi/gpt-5.6-terra
 
 gpu_queue:
   state_dir: .gpuq

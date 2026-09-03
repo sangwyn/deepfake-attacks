@@ -64,7 +64,7 @@
 - `campaign-reviewer.md` — read-only reviewer: без bash, без edit, только чтение evidence.
 
 Все три агента настроены с:
-- Моделью `naapi/gpt-5.6-luna`
+- Моделью `naapi/gpt-5.6-terra`
 - `task: false` (нет subagents)
 - `webfetch: deny`, `websearch: deny`
 - `external_directory: deny`

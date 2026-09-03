@@ -20,7 +20,7 @@ Invocation: `/attack <name> <smoke|development|full> [status-file] [task-id]`. I
 - A worker submits only `python3 -m ops.gpuq submit <job-spec.json>` and exits after recording `job_id`.
 - The scheduler maps `task_kind=attack-experiment` to fixed runner/verifier argv and owns GPU allocation, leases, retry, timeout, logs, and process cleanup.
 - The campaign controller reconciles `queued` and `running` jobs. Only a valid verifier report can produce attack outcome `passed`.
-- OpenCode `1.18.26` and model `naapi/gpt-5.6-luna` are frozen; a mismatch is a blocker, not permission to fall back to another model.
+- OpenCode `1.18.26` and model `naapi/gpt-5.6-terra` are frozen; a mismatch is a blocker, not permission to fall back to another model.
 
 ## Attack tasks
 
