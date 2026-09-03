@@ -1,6 +1,6 @@
 schema_version: 1
 idea_id: mig-cow
-status: approved
+status: deferred
 title: Momentum Integrated Gradients with Consensus-Orthogonal Weighting
 hypothesis: 'Выделение согласованных направлений градиента гетерогенного ансамбля повысит
   ASR на held-out detector относительно равновесного ансамбля.

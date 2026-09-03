@@ -265,8 +265,39 @@ class SpecScheduleAgreementTests(unittest.TestCase):
         }
 
     def _specified_attacks(self) -> set[str]:
-        # specs/attacks is the source of truth for what an attack is.
-        return {path.stem for path in (self._root() / "specs" / "attacks").glob("*.yaml")}
+        """Approved specifications only.
+
+        A deferred one describes a method that is worth running later -- when a
+        third detector exists, say -- and keeping its parameters is the point of
+        the file. It must not be scheduled meanwhile.
+        """
+
+        import yaml
+
+        approved = set()
+        for path in (self._root() / "specs" / "attacks").glob("*.yaml"):
+            spec = yaml.safe_load(path.read_text(encoding="utf-8"))
+            if spec.get("status") == "approved":
+                approved.add(path.stem)
+        return approved
+
+    def _deferred_attacks(self) -> set[str]:
+        import yaml
+
+        deferred = set()
+        for path in (self._root() / "specs" / "attacks").glob("*.yaml"):
+            spec = yaml.safe_load(path.read_text(encoding="utf-8"))
+            if spec.get("status") != "approved":
+                deferred.add(path.stem)
+        return deferred
+
+    def test_a_deferred_specification_is_never_scheduled(self):
+        scheduled = self._scheduled_attacks() & self._deferred_attacks()
+        self.assertEqual(
+            scheduled,
+            set(),
+            "the campaign schedules an attack whose specification is not approved",
+        )
 
     def test_every_scheduled_attack_has_a_specification(self):
         missing = self._scheduled_attacks() - self._specified_attacks()
