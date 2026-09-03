@@ -25,10 +25,10 @@ Pipeline (research details in docs/PLAN.md):
     evaluator-exact uint8 check still passes for every already-fooled detector.
   * Stage C (verify + re-attack): re-run the official transforms on the rounded
     image; any detector that slipped gets extra MI-FGSM steps.
-  * Stage D (rescue pass): images still below Q threshold (or not fully fooled)
-    get a second pass with a finer acquisition step and more iterations; the
-    best image across passes (most detectors fooled, then highest Q) is
-    returned.
+  * Stage D (rescue passes): images still below Q threshold (or not fully
+    fooled) get additional passes with finer/different acquisition steps and
+    random PGD starts; the best image across all passes (most detectors fooled,
+    then highest Q) is returned.
 
 LPIPS/SSIM models are cached globally (one load per process).
 
@@ -64,13 +64,23 @@ LINESEARCH_ITERS = 12
 # that slipped gets extra MI-FGSM steps.
 VERIFY_ROUNDS = 3
 REATTACK_STEPS = 20
-# Stage D (rescue pass): images that end pass 1 with Q below RESCUE_Q (or with
-# a detector still not fooled) get a fresh pass with a finer acquisition step
-# and more iterations; the best image across passes is returned.
-RESCUE_Q = 0.90
-RESCUE_STEP = 1.0 / 255.0
-RESCUE_STEPS = 160
-RESCUE_TAIL = 80
+# Stage D (rescue passes): images that end pass 1 with Q below RESCUE_Q (or with
+# a detector still not fooled) get extra passes with different (step size,
+# random-start) configurations. The uint8 accept gate sits right at the
+# decision boundary, so the recovery trajectory is chaotic run-to-run — cheap
+# solutions exist but are only hit on some runs; best-of-k with random PGD
+# starts turns that variance into a reliable win. The best image across all
+# passes (most detectors fooled, then highest Q) is kept.
+RESCUE_Q = 0.92
+RESCUE_CONFIGS = [
+    # (acquisition step, acq steps, tail steps, random-start radius, DI prob)
+    (1.0 / 255.0, 160, 80, 2.0 / 255.0, 0.0),
+    (2.0 / 255.0, 120, 60, 2.0 / 255.0, 0.0),
+    (1.0 / 255.0, 160, 80, 5.0 / 255.0, 0.5),   # DI + big random start
+    (2.0 / 255.0, 120, 60, 5.0 / 255.0, 0.5),
+    (1.0 / 255.0, 200, 100, 6.0 / 255.0, 0.3),
+    (1.0 / 255.0, 160, 80, 0.0, 0.0),           # zero-start re-run (numeric lottery)
+]
 # Input-diversity (DI, Xie et al.) for black-box transfer. Off by default
 # (it slightly lowers white-box fooling); set DI_PROB > 0 to randomly
 # resize+pad the input during acquisition, which boosts cross-model transfer.
@@ -330,8 +340,11 @@ def attack(image, classifiers, device,
     def adv_of(d):
         return (x + d).clamp(0.0, 1.0)
 
+    pass_cfg = {"di": DI_PROB}
+
     def loss_on(d):
-        adv = _di(adv_of(d)) if DI_PROB > 0 else adv_of(d)
+        adv = _di(adv_of(d), prob=pass_cfg["di"]) if pass_cfg["di"] > 0 \
+            else adv_of(d)
         return sum(_margin_loss(b(adv), target) for b in branches.values())
 
     def float_fooled(d):
@@ -356,11 +369,20 @@ def attack(image, classifiers, device,
             best_key, best_u = key, u
         return u
 
-    def run_pass(step=STEP, steps=STEPS, tail_steps=TAIL_STEPS):
+    def run_pass(step=STEP, steps=STEPS, tail_steps=TAIL_STEPS,
+                 rand_start=0.0, di=0.0):
         """One full acquisition -> line search -> Adam recovery -> verify
-        cycle, updating the global best (best_u/best_key via remember)."""
+        cycle, updating the global best (best_u/best_key via remember).
+        rand_start > 0 initialises the perturbation uniformly in a small L∞
+        ball (PGD random start); di > 0 enables Diverse-Inputs during
+        acquisition. Both diversify trajectories across rescue passes."""
+        pass_cfg["di"] = di if di > 0 else DI_PROB
         # ---- Stage A: MI-FGSM acquisition + early stop ----
-        delta = torch.zeros_like(x)
+        if rand_start > 0.0:
+            delta = (torch.rand_like(x) * 2.0 - 1.0) * rand_start
+            delta = (delta * allow).clamp(-epsilon, epsilon).detach()
+        else:
+            delta = torch.zeros_like(x)
         acc = torch.zeros_like(x)
         for it in range(steps):
             delta = delta.detach().requires_grad_(True)
@@ -498,13 +520,18 @@ def attack(image, classifiers, device,
                     break
             remember(delta)
 
-    # Pass 1: default fast configuration.
+    # Pass 1: default fast configuration (zero start).
     run_pass()
-    # Pass 2 (rescue): if the image is still imperfect — any detector not
-    # fooled, or Q below RESCUE_Q — retry with a finer acquisition step and
-    # more iterations (smaller L-infinity steps trace a shorter path to the
-    # decision boundary). remember() keeps the best image across both passes.
-    if best_key < (len(names), RESCUE_Q):
-        run_pass(step=RESCUE_STEP, steps=RESCUE_STEPS, tail_steps=RESCUE_TAIL)
+    # Rescue passes: while the image is still imperfect (any detector not
+    # fooled, or Q below RESCUE_Q), re-run with different step/random-start
+    # configurations. Smaller L∞ steps trace a shorter path to the decision
+    # boundary; random starts diversify the recovery trajectory (the
+    # near-boundary uint8 gate is chaotic run-to-run). remember() keeps the
+    # best image across all passes.
+    for (r_step, r_steps, r_tail, r_rand, r_di) in RESCUE_CONFIGS:
+        if best_key >= (len(names), RESCUE_Q):
+            break
+        run_pass(step=r_step, steps=r_steps, tail_steps=r_tail,
+                 rand_start=r_rand, di=r_di)
 
     return best_u if best_u is not None else image
